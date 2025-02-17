@@ -38,7 +38,7 @@ app.get("/image/:imageName", (req, res) => {
 
 // Only allow exact matches to the root of the front-end app
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "../front-end", "index.html"));
+  res.sendFile(path.join(__dirname, "../PulseTech-FrontEnd", "index.html"));
 });
 
 // Catch all other undefined routes and return a 404 error
