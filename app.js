@@ -22,7 +22,7 @@ app.use(function (req, res, next) {
   }
   next();
 });
-a
+
 // Dynamic Image Serving Route
 app.get("/image/:imageName", (req, res) => {
   const imageName = req.params.imageName;
