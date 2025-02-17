@@ -9,7 +9,7 @@ const app = express();
 app.use(cors());
 
 // Serve static files directly from the 'front-end' folder
-app.use(express.static(path.join(__dirname, "../front-end"))); // Adjust path if needed
+app.use(express.static(path.join(__dirname, "../PulseTech-FrontEnd"))); // Adjust path if needed
 
 // Serve images from the 'Static/Images' folder in the back-end
 const imagePath = path.join(__dirname, "Static", "Images");
