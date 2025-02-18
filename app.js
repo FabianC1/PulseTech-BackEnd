@@ -1,3 +1,4 @@
+// Import necessary dependencies
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
@@ -30,10 +31,7 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const client = new MongoClient(uri, { serverApi: ServerApiVersion.v1 });
 let db = client.db(dbName);
 
-
-console.log(`Connected to MongoDB: ${dbName}`);  // This logs after db initialization
-
-
+console.log(`Connected to MongoDB: ${dbName}`); // This logs after db initialization
 
 // Serve static files directly from the 'front-end' folder
 app.use(express.static(path.join(__dirname, "../PulseTech-FrontEnd"))); // Adjust path if needed
@@ -42,7 +40,7 @@ app.use(express.static(path.join(__dirname, "../PulseTech-FrontEnd"))); // Adjus
 const imagePath = path.join(__dirname, "Static", "Images");
 app.use("/image", express.static(imagePath));
 
-// Middleware 1: Logs all incoming requests (excluding favicon.ico)
+// Middleware to log all incoming requests (excluding favicon.ico)
 app.use(function (req, res, next) {
   if (req.url !== "/favicon.ico") {
     console.log("Request URL:", req.url);
@@ -89,6 +87,7 @@ app.get('/collections/legalDocs', async (req, res, next) => {
 });
 
 
+
 // Dynamic Image Serving Route
 app.get("/image/:imageName", (req, res) => {
   const imageName = req.params.imageName;
@@ -118,4 +117,3 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`App started on port ${PORT}`);
 });
-
