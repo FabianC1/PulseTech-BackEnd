@@ -87,6 +87,19 @@ app.get('/collections/legalDocs', async (req, res, next) => {
 });
 
 
+app.get("/collections/PrivacyAndSecurity", async (req, res) => {
+  try {
+      const db = client.db("yourDatabaseName"); // Replace with your actual DB name
+      const collection = db.collection("privacySecurity");
+      const data = await collection.find({}).toArray();
+      res.json(data);
+  } catch (error) {
+      console.error("Error fetching privacy and security data:", error);
+      res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+
 
 // Dynamic Image Serving Route
 app.get("/image/:imageName", (req, res) => {
@@ -100,6 +113,7 @@ app.get("/image/:imageName", (req, res) => {
     res.status(404).json({ error: "Image not found" });
   }
 });
+
 
 // Only allow exact matches to the root of the front-end app
 app.get("/", (req, res) => {
