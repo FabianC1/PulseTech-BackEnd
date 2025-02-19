@@ -72,14 +72,14 @@ app.get('/collections/:collectionName', async (req, res, next) => {
   }
 });
 
-// If you want to specifically return the 'legalDocs' JSON file
-app.get('/collections/legalDocs', async (req, res, next) => {
+// If you want to specifically return the 'privacyAndSecurity' JSON file
+app.get('/collections/PrivacyAndSecurity', async (req, res, next) => {
   try {
-    const legalDocs = await req.collection.find().toArray(); // Fetch data from the legalDocs collection
-    if (legalDocs.length === 0) {
-      res.status(404).json({ error: "No legal documents found" });
+    const privacyDocs = await req.collection.find().toArray(); // Fetch data from the privacyAndSecurity collection
+    if (privacyDocs.length === 0) {
+      res.status(404).json({ error: "No privacy and security documents found" });
     } else {
-      res.json(legalDocs); // Send the legalDocs as JSON
+      res.json(privacyDocs); // Send the privacyDocs as JSON
     }
   } catch (error) {
     next(error); // Handle any errors
@@ -87,15 +87,18 @@ app.get('/collections/legalDocs', async (req, res, next) => {
 });
 
 
+// Get Privacy and Security from MongoDB
 app.get("/collections/PrivacyAndSecurity", async (req, res) => {
   try {
-      const db = client.db("yourDatabaseName"); // Replace with your actual DB name
-      const collection = db.collection("privacySecurity");
-      const data = await collection.find({}).toArray();
+    const data = await getCollectionData("PrivacyAndSecurity"); // Assuming the collection is named "privacySecurity"
+    if (data && data.length > 0) {
       res.json(data);
+    } else {
+      res.status(404).send({ message: "Privacy and Security docs not found" });
+    }
   } catch (error) {
-      console.error("Error fetching privacy and security data:", error);
-      res.status(500).json({ error: "Internal Server Error" });
+    console.error("Error fetching Privacy and Security docs:", error);
+    res.status(500).send({ message: "Error fetching Privacy and Security docs" });
   }
 });
 
