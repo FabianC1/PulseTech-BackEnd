@@ -48,12 +48,6 @@ app.use(function (req, res, next) {
   next();
 });
 
-// Middleware to log every request
-app.use(function (req, res, next) {
-  console.log("Request URL:", req.url);
-  next();
-});
-
 // Dynamically set the MongoDB collection based on the 'collectionName' parameter
 app.param('collectionName', function (req, res, next, collectionName) {
   req.collection = db.collection(collectionName);
@@ -72,19 +66,6 @@ app.get('/collections/:collectionName', async (req, res, next) => {
   }
 });
 
-// If you want to specifically return the 'privacyAndSecurity' JSON file
-app.get('/collections/PrivacyAndSecurity', async (req, res, next) => {
-  try {
-    const privacyDocs = await req.collection.find().toArray(); // Fetch data from the privacyAndSecurity collection
-    if (privacyDocs.length === 0) {
-      res.status(404).json({ error: "No privacy and security documents found" });
-    } else {
-      res.json(privacyDocs); // Send the privacyDocs as JSON
-    }
-  } catch (error) {
-    next(error); // Handle any errors
-  }
-});
 
 
 // Get Privacy and Security from MongoDB
@@ -101,7 +82,6 @@ app.get("/collections/PrivacyAndSecurity", async (req, res) => {
     res.status(500).send({ message: "Error fetching Privacy and Security docs" });
   }
 });
-
 
 
 // Dynamic Image Serving Route
