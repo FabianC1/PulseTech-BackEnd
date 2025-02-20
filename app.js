@@ -33,15 +33,15 @@ let db = client.db(dbName);
 
 console.log(`Connected to MongoDB: ${dbName}`); // This logs after db initialization
 
-// Serve static files directly from the 'front-end' folder
-app.use(express.static(path.join(__dirname, "../PulseTech-FrontEnd"))); // Adjust path if needed
+// Serve static files directly from the 'PulseTech-FrontEnd' folder
+app.use(express.static(path.join(__dirname, "../PulseTech-FrontEnd"))); 
 
 // Serve images from the 'Static/Images' folder in the back-end
 const imagePath = path.join(__dirname, "Static", "Images");
 app.use("/image", express.static(imagePath));
 
 // Middleware to log all incoming requests (excluding favicon.ico)
-app.use(function (req, res, next) {
+app.use((req, res, next) => {
   if (req.url !== "/favicon.ico") {
     console.log("Request URL:", req.url);
   }
@@ -49,7 +49,7 @@ app.use(function (req, res, next) {
 });
 
 // Dynamically set the MongoDB collection based on the 'collectionName' parameter
-app.param('collectionName', function (req, res, next, collectionName) {
+app.param('collectionName', (req, res, next, collectionName) => {
   req.collection = db.collection(collectionName);
   return next();
 });
@@ -66,12 +66,10 @@ app.get('/collections/:collectionName', async (req, res, next) => {
   }
 });
 
-
-
 // Get Privacy and Security from MongoDB
 app.get("/collections/PrivacyAndSecurity", async (req, res) => {
   try {
-    const data = await getCollectionData("PrivacyAndSecurity"); // Assuming the collection is named "privacySecurity"
+    const data = await getCollectionData("PrivacyAndSecurity"); 
     if (data && data.length > 0) {
       res.json(data);
     } else {
@@ -82,7 +80,6 @@ app.get("/collections/PrivacyAndSecurity", async (req, res) => {
     res.status(500).send({ message: "Error fetching Privacy and Security docs" });
   }
 });
-
 
 // Dynamic Image Serving Route
 app.get("/image/:imageName", (req, res) => {
@@ -97,13 +94,17 @@ app.get("/image/:imageName", (req, res) => {
   }
 });
 
-
-// Only allow exact matches to the root of the front-end app
+// Serve index.html for root URL
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "../PulseTech-FrontEnd", "index.html"));
 });
 
-// Global error handler (last middleware)
+// Catch-all route for Vue's frontend views (fixes refresh issue)
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "../PulseTech-FrontEnd", "index.html"));
+});
+
+// Global error handler
 app.use((err, req, res, next) => {
   console.error(err);
   res.status(500).json({ error: "Internal Server Error", message: err.message });
