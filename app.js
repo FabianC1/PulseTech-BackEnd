@@ -34,7 +34,7 @@ let db = client.db(dbName);
 console.log(`Connected to MongoDB: ${dbName}`); // This logs after db initialization
 
 // Serve static files directly from the 'PulseTech-FrontEnd' folder
-app.use(express.static(path.join(__dirname, "../PulseTech-FrontEnd"))); 
+app.use(express.static(path.join(__dirname, "../PulseTech-FrontEnd")));
 
 // Serve images from the 'Static/Images' folder in the back-end
 const imagePath = path.join(__dirname, "Static", "Images");
@@ -69,7 +69,7 @@ app.get('/collections/:collectionName', async (req, res, next) => {
 // Get Privacy and Security from MongoDB
 app.get("/collections/PrivacyAndSecurity", async (req, res) => {
   try {
-    const data = await getCollectionData("PrivacyAndSecurity"); 
+    const data = await getCollectionData("PrivacyAndSecurity");
     if (data && data.length > 0) {
       res.json(data);
     } else {
@@ -80,6 +80,26 @@ app.get("/collections/PrivacyAndSecurity", async (req, res) => {
     res.status(500).send({ message: "Error fetching Privacy and Security docs" });
   }
 });
+
+
+// Get Health and Wellness Guidelines from MongoDB
+app.get("/collections/HealthAndWellnessGuidelines", async (req, res) => {
+  try {
+    const data = await getCollectionData("HealthAndWellnessGuidelines");
+    if (data && data.length > 0) {
+      res.json(data);
+    } else {
+      res.status(404).send({ message: "Health and Wellness Guidelines not found" });
+    }
+  } catch (error) {
+    console.error("Error fetching Health and Wellness Guidelines:", error);
+    res.status(500).send({ message: "Error fetching Health and Wellness Guidelines" });
+  }
+});
+
+
+
+
 
 // Dynamic Image Serving Route
 app.get("/image/:imageName", (req, res) => {
