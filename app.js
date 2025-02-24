@@ -114,6 +114,73 @@ app.get("/image/:imageName", (req, res) => {
   }
 });
 
+
+
+app.post("/register", async (req, res) => {
+  try {
+    const { username, email, password, role } = req.body;
+
+    if (!username || !email || !password || !role) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
+    const usersCollection = db.collection("Users");
+
+    // Check if the email already exists
+    const existingUser = await usersCollection.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: "Email already in use" });
+    }
+
+    // Store user in database
+    const newUser = {
+      username,
+      email,
+      password, // Password stored directly (No hashing since bcrypt is not used)
+      role,
+    };
+
+    await usersCollection.insertOne(newUser);
+
+    res.status(201).json({ message: "User registered successfully" });
+  } catch (error) {
+    console.error("Error registering user:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+
+app.post("/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
+    const usersCollection = db.collection("Users");
+
+    // Find user by email
+    const user = await usersCollection.findOne({ email });
+    if (!user) {
+      return res.status(401).json({ message: "Invalid email or password" });
+    }
+
+    // Check password (No hashing since bcrypt is not used)
+    if (user.password !== password) {
+      return res.status(401).json({ message: "Invalid email or password" });
+    }
+
+    res.status(200).json({ message: "Login successful", user });
+  } catch (error) {
+    console.error("Error logging in:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+
+
+
 // Serve index.html for root URL
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "../PulseTech-FrontEnd", "index.html"));
