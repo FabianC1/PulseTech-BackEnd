@@ -118,7 +118,7 @@ app.get("/image/:imageName", (req, res) => {
 
 app.post("/register", async (req, res) => {
   try {
-    const { username, email, password, role } = req.body;
+    const { username, email, password, role, medicalLicense } = req.body;
 
     if (!username || !email || !password || !role) {
       return res.status(400).json({ message: "All fields are required" });
@@ -132,7 +132,7 @@ app.post("/register", async (req, res) => {
       return res.status(400).json({ message: "Email already in use" });
     }
 
-    // Store user in database
+    // Create user object to insert into the database
     const newUser = {
       username,
       email,
@@ -140,6 +140,12 @@ app.post("/register", async (req, res) => {
       role,
     };
 
+    // Add medical license for doctors
+    if (role === "doctor" && medicalLicense) {
+      newUser.medicalLicense = medicalLicense;
+    }
+
+    // Store user in the database
     await usersCollection.insertOne(newUser);
 
     res.status(201).json({ message: "User registered successfully" });
@@ -148,6 +154,7 @@ app.post("/register", async (req, res) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 });
+
 
 
 app.post("/login", async (req, res) => {
