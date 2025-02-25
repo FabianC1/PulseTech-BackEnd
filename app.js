@@ -186,6 +186,47 @@ app.post("/login", async (req, res) => {
 });
 
 
+app.post('/updateProfile', async (req, res) => {
+  try {
+    const { email, fullName, username, dateOfBirth, ethnicity, address } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    // Prepare the update data
+    let updateData = {};
+
+    if (fullName) updateData.fullName = fullName;
+    if (username) updateData.username = username;
+    if (dateOfBirth) updateData.dateOfBirth = dateOfBirth;
+    if (ethnicity) updateData.ethnicity = ethnicity;
+    if (address) updateData.address = address;
+
+    // Log the data to be updated
+    console.log("Updating user data:", updateData);
+
+    // Ensure we're finding the user by email
+    const result = await db.collection("Users").updateOne(
+      { email: email },  // Use email to find the user
+      { $set: updateData }
+    );
+
+    if (result.modifiedCount === 0) {
+      return res.status(404).json({ message: "User not found or no changes made" });
+    }
+
+    res.status(200).json({ message: "User profile updated successfully", user: updateData });
+  } catch (error) {
+    console.error("Error updating user:", error);
+    res.status(500).json({ message: "Internal Server Error", error: error.message });
+  }
+});
+
+
+
+
+
 
 
 // Serve index.html for root URL
