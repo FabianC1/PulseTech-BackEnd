@@ -188,7 +188,7 @@ app.post("/login", async (req, res) => {
 
 app.post('/updateProfile', async (req, res) => {
   try {
-    const { email, fullName, username, dateOfBirth, ethnicity, address } = req.body;
+    const { email, fullName, username, dateOfBirth, ethnicity, address, phoneNumber, gender, profilePicture } = req.body;
 
     if (!email) {
       return res.status(400).json({ message: "Email is required" });
@@ -202,6 +202,9 @@ app.post('/updateProfile', async (req, res) => {
     if (dateOfBirth) updateData.dateOfBirth = dateOfBirth;
     if (ethnicity) updateData.ethnicity = ethnicity;
     if (address) updateData.address = address;
+    if (phoneNumber) updateData.phoneNumber = phoneNumber;
+    if (gender) updateData.gender = gender;
+    if (profilePicture) updateData.profilePicture = profilePicture; // Base64 image
 
     // Log the data to be updated
     console.log("Updating user data:", updateData);
@@ -222,6 +225,7 @@ app.post('/updateProfile', async (req, res) => {
     res.status(500).json({ message: "Internal Server Error", error: error.message });
   }
 });
+
 
 
 
