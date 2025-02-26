@@ -257,6 +257,26 @@ app.post("/removeProfilePicture", async (req, res) => {
 });
 
 
+app.post("/getUserProfile", async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    const user = await db.collection("Users").findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json({ profilePicture: user.profilePicture || null });
+  } catch (error) {
+    console.error("Error fetching user profile:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
 
 
 
