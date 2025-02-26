@@ -5,8 +5,13 @@ const path = require("path");
 const fs = require("fs");
 const mongoose = require("mongoose");
 const propertiesReader = require("properties-reader");
+const bodyParser = require('body-parser');
 
 const app = express();
+
+// Increase the limit for JSON and URL-encoded bodies
+app.use(bodyParser.json({ limit: '10mb' })); // Increase to 10MB (adjust as needed)
+app.use(bodyParser.urlencoded({ limit: '10mb', extended: true }));
 
 // Enable CORS
 app.use(cors());
