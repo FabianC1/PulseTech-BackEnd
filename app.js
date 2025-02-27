@@ -197,25 +197,36 @@ app.post("/login", async (req, res) => {
 
 
 
-// Update user profile, including password
+// Update user profile, including password only if changed
 app.post('/updateProfile', async (req, res) => {
-  console.log('Update profile route hit'); // Add this to debug
+  console.log('Update profile route hit');
+
   try {
     const { email, fullName, username, dateOfBirth, ethnicity, address, phoneNumber, gender, profilePicture, password } = req.body;
 
+    // Find the existing user in the database
+    const user = await db.collection("Users").findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
     let updateData = {
-      fullName: fullName,
-      username: username,
-      dateOfBirth: dateOfBirth,
-      ethnicity: ethnicity,
-      address: address,
-      phoneNumber: phoneNumber,
-      gender: gender,
-      profilePicture: profilePicture,
+      fullName,
+      username,
+      dateOfBirth,
+      ethnicity,
+      address,
+      phoneNumber,
+      gender,
+      profilePicture,
     };
 
-    if (password) {
-      updateData.password = await bcrypt.hash(password, 10); // Hash the password
+    // ✅ Only update the password if the user actually changed it
+    if (password && password.trim() !== "" && password !== user.password) {
+      updateData.password = await bcrypt.hash(password, 10); // Hash the new password
+    } else {
+      console.log("Password not changed, keeping the existing password.");
     }
 
     const result = await db.collection("Users").updateOne(
@@ -224,16 +235,15 @@ app.post('/updateProfile', async (req, res) => {
     );
 
     if (result.modifiedCount === 0) {
-      return res.status(404).json({ message: "User not found or no changes made" });
+      return res.status(404).json({ message: "No changes made" });
     }
 
-    res.status(200).json({ message: "User profile updated successfully", user: updateData });
+    res.status(200).json({ message: "User profile updated successfully" });
   } catch (error) {
     console.error("Error updating user:", error);
     res.status(500).json({ message: "Internal Server Error", error: error.message });
   }
 });
-
 
 
 app.post("/removeProfilePicture", async (req, res) => {
