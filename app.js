@@ -197,32 +197,29 @@ app.post("/login", async (req, res) => {
 
 
 
+// Update user profile, including password
 app.post('/updateProfile', async (req, res) => {
+  console.log('Update profile route hit'); // Add this to debug
   try {
-    const { email, fullName, username, dateOfBirth, ethnicity, address, phoneNumber, gender, profilePicture } = req.body;
+    const { email, fullName, username, dateOfBirth, ethnicity, address, phoneNumber, gender, profilePicture, password } = req.body;
 
-    if (!email) {
-      return res.status(400).json({ message: "Email is required" });
+    let updateData = {
+      fullName: fullName,
+      username: username,
+      dateOfBirth: dateOfBirth,
+      ethnicity: ethnicity,
+      address: address,
+      phoneNumber: phoneNumber,
+      gender: gender,
+      profilePicture: profilePicture,
+    };
+
+    if (password) {
+      updateData.password = await bcrypt.hash(password, 10); // Hash the password
     }
 
-    // Prepare the update data
-    let updateData = {};
-
-    if (fullName) updateData.fullName = fullName;
-    if (username) updateData.username = username;
-    if (dateOfBirth) updateData.dateOfBirth = dateOfBirth;
-    if (ethnicity) updateData.ethnicity = ethnicity;
-    if (address) updateData.address = address;
-    if (phoneNumber) updateData.phoneNumber = phoneNumber;
-    if (gender) updateData.gender = gender;
-    if (profilePicture) updateData.profilePicture = profilePicture; // Base64 image
-
-    // Log the data to be updated
-    console.log("Updating user data:", updateData);
-
-    // Ensure we're finding the user by email
     const result = await db.collection("Users").updateOne(
-      { email: email },  // Use email to find the user
+      { email: email },
       { $set: updateData }
     );
 
@@ -236,6 +233,7 @@ app.post('/updateProfile', async (req, res) => {
     res.status(500).json({ message: "Internal Server Error", error: error.message });
   }
 });
+
 
 
 app.post("/removeProfilePicture", async (req, res) => {
