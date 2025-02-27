@@ -6,6 +6,7 @@ const fs = require("fs");
 const mongoose = require("mongoose");
 const propertiesReader = require("properties-reader");
 const bodyParser = require('body-parser');
+const bcrypt = require('bcryptjs');
 
 const app = express();
 
@@ -137,11 +138,14 @@ app.post("/register", async (req, res) => {
       return res.status(400).json({ message: "Email already in use" });
     }
 
+    // Hash the password before saving
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     // Create user object to insert into the database
     const newUser = {
       username,
       email,
-      password, // Password stored directly (No hashing since bcrypt is not used)
+      password: hashedPassword, // Store the hashed password
       role,
     };
 
@@ -178,8 +182,9 @@ app.post("/login", async (req, res) => {
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
-    // Check password (No hashing since bcrypt is not used)
-    if (user.password !== password) {
+    // Compare the provided password with the stored hashed password
+    const match = await bcrypt.compare(password, user.password);
+    if (!match) {
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
@@ -189,6 +194,7 @@ app.post("/login", async (req, res) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 });
+
 
 
 app.post('/updateProfile', async (req, res) => {
