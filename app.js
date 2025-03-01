@@ -298,11 +298,12 @@ app.post("/getUserProfile", async (req, res) => {
 
 
 
+let pythonProcess = null;  // Store the reference to the running Python process
 
-// Symptom checker route
-app.post('/symptom-checker', (req, res) => {
+// Symptom checker route (this will start the Python process)
+app.post('/start-diagnosis', (req, res) => {
   // Start the Python process interactively
-  const pythonProcess = spawn('python', ['symptom_checker.py']);
+  pythonProcess = spawn('python', ['symptom_checker.py']);
 
   let output = '';
   let errorOutput = '';
@@ -310,6 +311,10 @@ app.post('/symptom-checker', (req, res) => {
   // Capture standard output from Python
   pythonProcess.stdout.on('data', (data) => {
     output += data.toString();
+    console.log("Python output:", output);
+
+    // Send output back to frontend, handle questions and answers
+    res.json({ question: output.trim() });
   });
 
   // Capture standard error output from Python
@@ -317,13 +322,31 @@ app.post('/symptom-checker', (req, res) => {
     errorOutput += data.toString();
   });
 
-  // When the Python script finishes, send the result or error back to the client
   pythonProcess.on('close', (code) => {
-    if (code === 0) {
-      res.json({ result: output.trim() });  // Send the output from the script
-    } else {
+    if (code !== 0) {
+      console.error('Python script error:', errorOutput);
       res.status(500).json({ error: `Python script error: ${errorOutput.trim()}` });
     }
+  });
+});
+
+// Handle the user input for each question and continue the diagnosis
+app.post('/answer-question', (req, res) => {
+  const { answer } = req.body;
+
+  if (!answer) {
+    return res.status(400).json({ error: 'Answer is required.' });
+  }
+
+  // Send the user's answer to the Python script
+  if (pythonProcess) {
+    pythonProcess.stdin.write(answer + '\n');  // Send the answer to the Python script
+  }
+
+  // Respond back with the next question
+  pythonProcess.stdout.once('data', (data) => {
+    const nextQuestion = data.toString().trim();
+    res.json({ question: nextQuestion });
   });
 });
 
