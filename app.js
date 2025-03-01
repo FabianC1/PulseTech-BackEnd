@@ -8,6 +8,8 @@ const propertiesReader = require("properties-reader");
 const bodyParser = require('body-parser');
 const bcrypt = require('bcryptjs');
 
+const { spawn } = require('child_process');
+
 const app = express();
 
 // Increase the limit for JSON and URL-encoded bodies
@@ -291,6 +293,42 @@ app.post("/getUserProfile", async (req, res) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 });
+
+
+
+
+
+
+// Symptom checker route
+app.post('/symptom-checker', (req, res) => {
+  // Start the Python process interactively
+  const pythonProcess = spawn('python', ['symptom_checker.py']);
+
+  let output = '';
+  let errorOutput = '';
+
+  // Capture standard output from Python
+  pythonProcess.stdout.on('data', (data) => {
+    output += data.toString();
+  });
+
+  // Capture standard error output from Python
+  pythonProcess.stderr.on('data', (data) => {
+    errorOutput += data.toString();
+  });
+
+  // When the Python script finishes, send the result or error back to the client
+  pythonProcess.on('close', (code) => {
+    if (code === 0) {
+      res.json({ result: output.trim() });  // Send the output from the script
+    } else {
+      res.status(500).json({ error: `Python script error: ${errorOutput.trim()}` });
+    }
+  });
+});
+
+
+
 
 
 
