@@ -124,11 +124,11 @@ def tree_to_code(tree, feature_names):
             disease_input = cnf_dis[conf_inp - 1]
             break
         else:
-            print("\nI am sorry. It is not registered in our database. Enter another symptom.")
+            print("\nI'm sorry. It's not registered in our database. Enter another symptom.")
 
     while True:
         try:
-            num_days = int(input("\nSorry to hear that. For how many days have you had this? "))
+            num_days = int(input("\nSorry to hear that. How many days have you had this? "))
             break
         except:
             print("\nEnter number of days.")
