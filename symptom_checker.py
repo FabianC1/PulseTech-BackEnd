@@ -125,7 +125,7 @@ def tree_to_code(tree, feature_names):
 
     while True:
         try:
-            num_days = int(input("\nOkay. From how many days ?"))
+            num_days = int(input("\nOkay. For how many days ?"))
             break
         except:
             print("\nEnter number of days.")
@@ -311,6 +311,5 @@ def main():
     tree_to_code(clf, cols)  # Running the main disease prediction function with trained classifier
 
 if __name__ == "__main__":
-    while True:  # Keeps the script running to accept multiple inputs
-        main()
+    main()
 
