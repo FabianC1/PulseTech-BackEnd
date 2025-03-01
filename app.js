@@ -10,6 +10,8 @@ const bcrypt = require('bcryptjs');
 
 const { spawn } = require('child_process');
 
+require('events').EventEmitter.defaultMaxListeners = 20;
+
 const app = express();
 
 // Increase the limit for JSON and URL-encoded bodies
@@ -300,54 +302,55 @@ app.post("/getUserProfile", async (req, res) => {
 
 let pythonProcess = null;
 
-// Start Diagnosis (Initialize the Python Process)
 app.post("/start-diagnosis", (req, res) => {
-    if (pythonProcess) {
-        pythonProcess.kill(); // Kill any existing process before starting a new one
-    }
+  if (pythonProcess) {
+    pythonProcess.kill();  // Kill any existing process before starting a new one
+  }
 
-    pythonProcess = spawn("python", ["symptom_checker.py"]);
+  pythonProcess = spawn("python", ["symptom_checker.py"]);
 
-    let initialOutput = "";
+  let initialOutput = "";
 
-    pythonProcess.stdout.on("data", (data) => {
-        initialOutput += data.toString();
-    });
+  pythonProcess.stdout.on("data", (data) => {
+    initialOutput += data.toString();
+  });
 
-    pythonProcess.stderr.on("data", (data) => {
-        console.error(`Python error: ${data}`);
-    });
+  pythonProcess.stderr.on("data", (data) => {
+    console.error(`Python error: ${data}`);
+  });
 
-    pythonProcess.on("close", (code) => {
-        console.log(`Python process exited with code ${code}`);
-        pythonProcess = null;
-    });
+  pythonProcess.on("close", (code) => {
+    console.log(`Python process exited with code ${code}`);
+    pythonProcess = null;
+  });
 
-    setTimeout(() => {
-        res.json({ message: initialOutput.trim() });
-    }, 500); // Small delay to capture initial output
+  setTimeout(() => {
+    res.json({ message: initialOutput.trim() });
+  }, 500); // Small delay to capture initial output
 });
 
 // Send User Answers to Python Process
 app.post("/answer-question", (req, res) => {
-    const { userInput } = req.body;
+  const { userInput } = req.body;
 
-    if (!pythonProcess) {
-        return res.status(400).json({ error: "Diagnosis session not started." });
-    }
+  if (!pythonProcess) {
+    return res.status(400).json({ error: "Diagnosis session not started." });
+  }
 
-    pythonProcess.stdin.write(userInput + "\n");
+  pythonProcess.stdin.write(userInput + "\n");
 
-    let output = "";
+  let output = "";
 
-    pythonProcess.stdout.on("data", (data) => {
-        output += data.toString();
-    });
+  pythonProcess.stdout.on("data", (data) => {
+    output += data.toString();
+  });
 
-    setTimeout(() => {
-        res.json({ message: output.trim() });
-    }, 500); // Small delay to allow Python to process
+  setTimeout(() => {
+    res.json({ message: output.trim() });
+  }, 500); // Small delay to allow Python to process
 });
+
+
 
 
 

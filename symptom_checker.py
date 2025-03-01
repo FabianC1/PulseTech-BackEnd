@@ -96,12 +96,15 @@ def tree_to_code(tree, feature_names):
         for i in tree_.feature
     ]
     chk_dis = ",".join(feature_names).split(",")
-    
+
     symptoms_present = []
-    print("\nMay I know the primary symptom you are experiencing")
+    print("\nMay I know the primary symptom you are experiencing?")
+    
+    # Ask the primary symptom only once
     while True:
         disease_input = input("").lower().replace(" ", "_")
         conf, cnf_dis = check_pattern(chk_dis, disease_input)
+        
         if conf == 1:
             print("\nSearches related to input: ")
             for num, it in enumerate(cnf_dis):
@@ -125,7 +128,7 @@ def tree_to_code(tree, feature_names):
 
     while True:
         try:
-            num_days = int(input("\nOkay. For how many days ?"))
+            num_days = int(input("\nOkay. For how many days? "))
             break
         except:
             print("\nEnter number of days.")
@@ -147,11 +150,12 @@ def tree_to_code(tree, feature_names):
             present_disease = print_disease(tree_.value[node])
             red_cols = reduced_data.columns
             symptoms_given = red_cols[reduced_data.loc[present_disease].values[0].nonzero()]
+            
             print("\nAre you experiencing any of the below symptoms?")
             symptoms_exp = []
             for syms in list(symptoms_given):
                 inp = ""
-                print(syms.replace("_", " "), "? : (yes/no) ", end='')
+                print(syms.replace("_", " "), "? : (yes/no) ", end="")
                 while True:
                     inp = input("")
                     if(inp == "yes" or inp == "no"):
@@ -167,106 +171,21 @@ def tree_to_code(tree, feature_names):
             # Print the diagnosis and accuracy in the same line
             diagnosis_output = f"You may have {present_disease[0]} | Diagnosis Accuracy: {model_accuracy * 100:.2f}%"
             print(diagnosis_output)  # Print the diagnosis with accuracy
-
-            print(description_list[present_disease[0].rstrip()])
-            print(description_list[second_prediction[0].rstrip()])
+            
+            # Print the description in multiple lines without repetition
+            description = description_list[present_disease[0].rstrip()]
+            description_lines = description.split(". ")  # Split sentences by period and space
+            
+            for line in description_lines:
+                print(line.strip())  # Print each sentence in a new line
 
             precaution_list = precautionDictionary[present_disease[0]]
             print("\nTake following measures: ")
             for i, j in enumerate(precaution_list):
                 print(i + 1, ")", j)  # Do not repeat the diagnosis accuracy here
-        
+            
     recurse(0, 1)
 
-
-    tree_ = tree.tree_
-    feature_name = [
-        feature_names[i] if i != _tree.TREE_UNDEFINED else "undefined!"
-        for i in tree_.feature
-    ]
-    chk_dis = ",".join(feature_names).split(",")
-
-    symptoms_present = []
-    print("\nMay I know the primary symptom you are experiencing")
-    while True:
-        disease_input = input("").lower().replace(" ", "_")
-        conf, cnf_dis = check_pattern(chk_dis, disease_input)
-        if conf == 1:
-            print("\nSearches related to input: ")
-            for num, it in enumerate(cnf_dis):
-                print(str(num + 1) + ")", it.replace("_", " "))
-            conf_inp = 0
-            while conf_inp <= 0 or conf_inp > num + 1:
-                if num != 0:
-                    try:
-                        print(f"Select the one you meant (1 to {num+1}):  ", end="")
-                        conf_inp = int(input(""))
-                    except:
-                        print(f"Select the one you meant (1 to {num+1}):  ", end="")
-                        conf_inp = int(input(""))
-                else:
-                    conf_inp = 0
-                    break
-            disease_input = cnf_dis[conf_inp - 1]
-            break
-        else:
-            print("\nI am sorry. It is not registered in our database. Enter another symptom.")
-
-    while True:
-        try:
-            num_days = int(input("\nOkay. From how many days ?"))
-            break
-        except:
-            print("\nEnter number of days.")
-
-    def recurse(node, depth):
-        if tree_.feature[node] != _tree.TREE_UNDEFINED:
-            name = feature_name[node]
-            threshold = tree_.threshold[node]
-            if name == disease_input:
-                val = 1
-            else:
-                val = 0
-            if val <= threshold:
-                recurse(tree_.children_left[node], depth + 1)
-            else:
-                symptoms_present.append(name)
-                recurse(tree_.children_right[node], depth + 1)
-        else:
-            present_disease = print_disease(tree_.value[node])
-            red_cols = reduced_data.columns
-            symptoms_given = red_cols[reduced_data.loc[present_disease].values[0].nonzero()]
-            print("\nAre you experiencing any of the below symptoms?")
-            symptoms_exp = []
-            for syms in list(symptoms_given):
-                inp = ""
-                print(syms.replace("_", " "), "? : (yes/no) ", end='')
-                while True:
-                    inp = input("")
-                    if(inp == "yes" or inp == "no"):
-                        break
-                    else:
-                        print("\nPlease provide proper answer (yes/no) : ")
-                if(inp == "yes"):
-                    symptoms_exp.append(syms)
-
-            second_prediction = sec_predict(symptoms_exp)
-            calc_condition(symptoms_exp, num_days)
-            if(present_disease[0] == second_prediction[0]):
-                print("You may have ", present_disease[0])
-                print(description_list[present_disease[0].rstrip()])
-            else:
-                print("\nYou may have " + str(present_disease[0]) + " or " + str(second_prediction[0]))
-                print(description_list[present_disease[0].rstrip()])
-                print(description_list[second_prediction[0].rstrip()])
-
-            precaution_list = precautionDictionary[present_disease[0]]
-            print("\nTake following measures: ")
-            for i, j in enumerate(precaution_list):
-                print(i + 1, ")", j)
-                print(f"\nDiagnosis Accuracy: {model_accuracy * 100:.2f}%")  
-        
-    recurse(0, 1)
 
 def sec_predict(symptoms_exp):
     df = pd.read_csv('csv_files/training.csv')
@@ -284,7 +203,7 @@ def sec_predict(symptoms_exp):
     for item in symptoms_exp:
         input_vector[[symptoms_dict[item]]] = 1
 
-    return rf_clf.predict([input_vector])  # ✅ No more prints!
+    return rf_clf.predict([input_vector]) 
 
 
 
@@ -311,5 +230,5 @@ def main():
     tree_to_code(clf, cols)  # Running the main disease prediction function with trained classifier
 
 if __name__ == "__main__":
-    main()
-
+    while True:  # Keeps the script running to accept multiple inputs
+        main()
