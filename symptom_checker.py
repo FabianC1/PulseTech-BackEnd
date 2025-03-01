@@ -128,7 +128,7 @@ def tree_to_code(tree, feature_names):
 
     while True:
         try:
-            num_days = int(input("\nOkay. For how many days? "))
+            num_days = int(input("\nSorry to hear that. For how many days have you had this? "))
             break
         except:
             print("\nEnter number of days.")
