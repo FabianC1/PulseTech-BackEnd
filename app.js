@@ -328,7 +328,7 @@ app.post("/start-diagnosis", (req, res) => {
     // Wait for a moment before sending the response to ensure it's initialized
     setTimeout(() => {
         res.json({ message: initialOutput.trim() });
-    }, 500);  // Adjust timeout if necessary to ensure it gets enough time to respond
+    },200);  // Adjust timeout if necessary to ensure it gets enough time to respond
 });
 
 
@@ -352,7 +352,7 @@ app.post("/answer-question", (req, res) => {
 
   setTimeout(() => {
     res.json({ message: output.trim() });
-  }, 500); // Small delay to allow Python to process
+  }, 200); // Small delay to allow Python to process
 });
 
 
