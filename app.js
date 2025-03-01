@@ -298,61 +298,56 @@ app.post("/getUserProfile", async (req, res) => {
 
 
 
-let pythonProcess = null;  // Store the reference to the running Python process
+let pythonProcess = null;
 
-// Symptom checker route (this will start the Python process)
-app.post('/start-diagnosis', (req, res) => {
-  // Start the Python process interactively
-  pythonProcess = spawn('python', ['symptom_checker.py']);
-
-  let output = '';
-  let errorOutput = '';
-
-  // Capture standard output from Python
-  pythonProcess.stdout.on('data', (data) => {
-    output += data.toString();
-    console.log("Python output:", output);
-
-    // Send output back to frontend, handle questions and answers
-    res.json({ question: output.trim() });
-  });
-
-  // Capture standard error output from Python
-  pythonProcess.stderr.on('data', (data) => {
-    errorOutput += data.toString();
-  });
-
-  pythonProcess.on('close', (code) => {
-    if (code !== 0) {
-      console.error('Python script error:', errorOutput);
-      res.status(500).json({ error: `Python script error: ${errorOutput.trim()}` });
+// Start Diagnosis (Initialize the Python Process)
+app.post("/start-diagnosis", (req, res) => {
+    if (pythonProcess) {
+        pythonProcess.kill(); // Kill any existing process before starting a new one
     }
-  });
+
+    pythonProcess = spawn("python", ["symptom_checker.py"]);
+
+    let initialOutput = "";
+
+    pythonProcess.stdout.on("data", (data) => {
+        initialOutput += data.toString();
+    });
+
+    pythonProcess.stderr.on("data", (data) => {
+        console.error(`Python error: ${data}`);
+    });
+
+    pythonProcess.on("close", (code) => {
+        console.log(`Python process exited with code ${code}`);
+        pythonProcess = null;
+    });
+
+    setTimeout(() => {
+        res.json({ message: initialOutput.trim() });
+    }, 500); // Small delay to capture initial output
 });
 
-// Handle the user input for each question and continue the diagnosis
-app.post('/answer-question', (req, res) => {
-  const { answer } = req.body;
+// Send User Answers to Python Process
+app.post("/answer-question", (req, res) => {
+    const { userInput } = req.body;
 
-  if (!answer) {
-    return res.status(400).json({ error: 'Answer is required.' });
-  }
+    if (!pythonProcess) {
+        return res.status(400).json({ error: "Diagnosis session not started." });
+    }
 
-  // Send the user's answer to the Python script
-  if (pythonProcess) {
-    pythonProcess.stdin.write(answer + '\n');  // Send the answer to the Python script
-  }
+    pythonProcess.stdin.write(userInput + "\n");
 
-  // Respond back with the next question
-  pythonProcess.stdout.once('data', (data) => {
-    const nextQuestion = data.toString().trim();
-    res.json({ question: nextQuestion });
-  });
+    let output = "";
+
+    pythonProcess.stdout.on("data", (data) => {
+        output += data.toString();
+    });
+
+    setTimeout(() => {
+        res.json({ message: output.trim() });
+    }, 500); // Small delay to allow Python to process
 });
-
-
-
-
 
 
 
