@@ -300,17 +300,16 @@ app.post("/getUserProfile", async (req, res) => {
 
 
 
-let pythonProcess = null;
+let pythonProcess = null;  // Declare pythonProcess outside so it persists
 
-// Start a new diagnosis
 app.post("/start-diagnosis", (req, res) => {
+    // Kill any ongoing process to ensure a clean state before starting a new one
     if (pythonProcess) {
-        pythonProcess.kill(); // Kill any existing process before starting a new one
+        pythonProcess.kill('SIGTERM');  // Gracefully kill the existing Python process
+        pythonProcess = null;
     }
 
-    // Start a new Python process
     pythonProcess = spawn("python", ["symptom_checker.py"]);
-
     let initialOutput = "";
 
     pythonProcess.stdout.on("data", (data) => {
@@ -318,23 +317,21 @@ app.post("/start-diagnosis", (req, res) => {
     });
 
     pythonProcess.stderr.on("data", (data) => {
-        console.error(`Python error: ${data.toString()}`);
+        console.error(`Python error: ${data}`);
     });
 
     pythonProcess.on("close", (code) => {
-        if (code !== 0) {
-            console.error(`Python process exited with code ${code}`);
-        }
-        pythonProcess = null;
+        console.log(`Python process exited with code ${code}`);
+        pythonProcess = null;  // Reset the process after it exits
     });
 
+    // Wait for a moment before sending the response to ensure it's initialized
     setTimeout(() => {
-        if (!initialOutput.trim()) {
-            console.error("No initial output from Python script.");
-        }
         res.json({ message: initialOutput.trim() });
-    }, 500); // Small delay to capture initial output
+    }, 500);  // Adjust timeout if necessary to ensure it gets enough time to respond
 });
+
+
 
 
 // Send User Answers to Python Process
