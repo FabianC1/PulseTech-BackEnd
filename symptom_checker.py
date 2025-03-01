@@ -230,5 +230,4 @@ def main():
     tree_to_code(clf, cols)  # Running the main disease prediction function with trained classifier
 
 if __name__ == "__main__":
-    while True:  # Keeps the script running to accept multiple inputs
         main()

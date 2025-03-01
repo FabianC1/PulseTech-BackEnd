@@ -226,7 +226,7 @@ app.post('/updateProfile', async (req, res) => {
       profilePicture,
     };
 
-    // ✅ Only update the password if the user actually changed it
+    // Only update the password if the user actually changed it
     if (password && password.trim() !== "" && password !== user.password) {
       updateData.password = await bcrypt.hash(password, 10); // Hash the new password
     } else {
@@ -302,32 +302,40 @@ app.post("/getUserProfile", async (req, res) => {
 
 let pythonProcess = null;
 
+// Start a new diagnosis
 app.post("/start-diagnosis", (req, res) => {
-  if (pythonProcess) {
-    pythonProcess.kill();  // Kill any existing process before starting a new one
-  }
+    if (pythonProcess) {
+        pythonProcess.kill(); // Kill any existing process before starting a new one
+    }
 
-  pythonProcess = spawn("python", ["symptom_checker.py"]);
+    // Start a new Python process
+    pythonProcess = spawn("python", ["symptom_checker.py"]);
 
-  let initialOutput = "";
+    let initialOutput = "";
 
-  pythonProcess.stdout.on("data", (data) => {
-    initialOutput += data.toString();
-  });
+    pythonProcess.stdout.on("data", (data) => {
+        initialOutput += data.toString();
+    });
 
-  pythonProcess.stderr.on("data", (data) => {
-    console.error(`Python error: ${data}`);
-  });
+    pythonProcess.stderr.on("data", (data) => {
+        console.error(`Python error: ${data.toString()}`);
+    });
 
-  pythonProcess.on("close", (code) => {
-    console.log(`Python process exited with code ${code}`);
-    pythonProcess = null;
-  });
+    pythonProcess.on("close", (code) => {
+        if (code !== 0) {
+            console.error(`Python process exited with code ${code}`);
+        }
+        pythonProcess = null;
+    });
 
-  setTimeout(() => {
-    res.json({ message: initialOutput.trim() });
-  }, 500); // Small delay to capture initial output
+    setTimeout(() => {
+        if (!initialOutput.trim()) {
+            console.error("No initial output from Python script.");
+        }
+        res.json({ message: initialOutput.trim() });
+    }, 500); // Small delay to capture initial output
 });
+
 
 // Send User Answers to Python Process
 app.post("/answer-question", (req, res) => {
