@@ -535,6 +535,31 @@ app.post("/create-appointment", async (req, res) => {
   }
 });
 
+// Update Appointment Status to Completed (For Doctors)
+app.post("/update-appointment-status", async (req, res) => {
+  const { appointmentId } = req.body; // Only need the appointment ID
+
+  if (!appointmentId) {
+    return res.status(400).json({ message: "Appointment ID is required" });
+  }
+
+  try {
+    const result = await db.collection("Appointments").updateOne(
+      { _id: new ObjectId(appointmentId) }, // Use the appointment ID to find the record
+      { $set: { status: "Completed" } } // Update the status to "Completed"
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ message: "Appointment not found" });
+    }
+
+    res.status(200).json({ message: "Appointment status updated to completed successfully" });
+  } catch (error) {
+    console.error("Error updating appointment status:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
 
 
 // Get Appointments for Logged-In User
@@ -557,30 +582,6 @@ app.get("/get-appointments", async (req, res) => {
   }
 });
 
-// Update Appointment Status
-app.post("/update-appointment-status", async (req, res) => {
-  const { doctorEmail, patientEmail, date, status } = req.body;
-
-  if (!doctorEmail || !patientEmail || !date || !status) {
-    return res.status(400).json({ message: "All fields are required" });
-  }
-
-  try {
-    const result = await db.collection("Appointments").updateOne(
-      { doctorEmail, patientEmail, date },
-      { $set: { status } }
-    );
-
-    if (result.modifiedCount === 0) {
-      return res.status(404).json({ message: "Appointment not found" });
-    }
-
-    res.status(200).json({ message: "Appointment status updated successfully" });
-  } catch (error) {
-    console.error("Error updating appointment status:", error);
-    res.status(500).json({ message: "Internal server error" });
-  }
-});
 
 
 // View Medical Records of a Specific Patient (For Doctors)
