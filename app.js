@@ -511,6 +511,44 @@ app.get("/get-doctors", async (req, res) => {
   }
 });
 
+// Create an Appointment
+app.post("/create-appointment", async (req, res) => {
+  const { doctorEmail, patientEmail, date, reason } = req.body;
+
+  // Validate required fields
+  if (!doctorEmail || !patientEmail || !date || !reason) {
+    return res.status(400).json({ message: "All fields are required" });
+  }
+
+  try {
+    // Check if an appointment already exists for this date and doctor-patient pair
+    const existingAppointment = await db.collection("Appointments").findOne({
+      doctorEmail,
+      patientEmail,
+      date,
+    });
+
+    if (existingAppointment) {
+      return res.status(400).json({ message: "An appointment already exists on this date" });
+    }
+
+    // Insert new appointment into the database
+    await db.collection("Appointments").insertOne({
+      doctorEmail,
+      patientEmail,
+      date,
+      reason,
+      status: "Scheduled", // Default status
+    });
+
+    res.status(201).json({ message: "Appointment created successfully" });
+  } catch (error) {
+    console.error("Error creating appointment:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+
 // Get Appointments for Logged-In User
 app.get("/get-appointments", async (req, res) => {
   const { email } = req.query;
@@ -530,6 +568,32 @@ app.get("/get-appointments", async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 });
+
+// Update Appointment Status
+app.post("/update-appointment-status", async (req, res) => {
+  const { doctorEmail, patientEmail, date, status } = req.body;
+
+  if (!doctorEmail || !patientEmail || !date || !status) {
+    return res.status(400).json({ message: "All fields are required" });
+  }
+
+  try {
+    const result = await db.collection("Appointments").updateOne(
+      { doctorEmail, patientEmail, date },
+      { $set: { status } }
+    );
+
+    if (result.modifiedCount === 0) {
+      return res.status(404).json({ message: "Appointment not found" });
+    }
+
+    res.status(200).json({ message: "Appointment status updated successfully" });
+  } catch (error) {
+    console.error("Error updating appointment status:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
 
 // View Medical Records of a Specific Patient (For Doctors)
 app.get("/view-patient-records", async (req, res) => {
