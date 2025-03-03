@@ -489,7 +489,7 @@ app.get("/get-medical-records", async (req, res) => {
 });
 
 
-// ✅ Get All Patients (For Doctors)
+// Get All Patients (For Doctors)
 app.get("/get-patients", async (req, res) => {
   try {
     const patients = await db.collection("Users").find({ role: "patient" }).toArray();
@@ -500,7 +500,7 @@ app.get("/get-patients", async (req, res) => {
   }
 });
 
-// ✅ Get All Doctors (For Patients)
+// Get All Doctors (For Patients)
 app.get("/get-doctors", async (req, res) => {
   try {
     const doctors = await db.collection("Users").find({ role: "doctor" }).toArray();
@@ -511,7 +511,7 @@ app.get("/get-doctors", async (req, res) => {
   }
 });
 
-// ✅ Get Appointments for Logged-In User
+// Get Appointments for Logged-In User
 app.get("/get-appointments", async (req, res) => {
   const { email } = req.query;
 
@@ -531,7 +531,7 @@ app.get("/get-appointments", async (req, res) => {
   }
 });
 
-// ✅ View Medical Records of a Specific Patient (For Doctors)
+// View Medical Records of a Specific Patient (For Doctors)
 app.get("/view-patient-records", async (req, res) => {
   const { email } = req.query;
 
