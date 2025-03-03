@@ -489,6 +489,69 @@ app.get("/get-medical-records", async (req, res) => {
 });
 
 
+// ✅ Get All Patients (For Doctors)
+app.get("/get-patients", async (req, res) => {
+  try {
+    const patients = await db.collection("Users").find({ role: "patient" }).toArray();
+    res.json(patients); // Ensure this returns JSON
+  } catch (error) {
+    console.error("Error fetching patients:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// ✅ Get All Doctors (For Patients)
+app.get("/get-doctors", async (req, res) => {
+  try {
+    const doctors = await db.collection("Users").find({ role: "doctor" }).toArray();
+    res.json(doctors); // Ensure this returns JSON
+  } catch (error) {
+    console.error("Error fetching doctors:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// ✅ Get Appointments for Logged-In User
+app.get("/get-appointments", async (req, res) => {
+  const { email } = req.query;
+
+  if (!email) {
+    return res.status(400).json({ message: "Email not provided" });
+  }
+
+  try {
+    const appointments = await db.collection("Appointments").find({
+      $or: [{ doctorEmail: email }, { patientEmail: email }],
+    }).toArray();
+
+    res.json(appointments); // Ensure this returns JSON
+  } catch (error) {
+    console.error("Error fetching appointments:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// ✅ View Medical Records of a Specific Patient (For Doctors)
+app.get("/view-patient-records", async (req, res) => {
+  const { email } = req.query;
+
+  if (!email) {
+    return res.status(400).json({ message: "Patient email required" });
+  }
+
+  try {
+    const medicalRecord = await db.collection("MedicalRecords").findOne({ userEmail: email });
+
+    if (medicalRecord) {
+      res.json(medicalRecord);
+    } else {
+      res.status(404).json({ message: "No medical records found for this patient" });
+    }
+  } catch (error) {
+    console.error("Error fetching patient medical records:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
 
 
 
