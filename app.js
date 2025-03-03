@@ -465,11 +465,15 @@ app.post("/save-medical-records", async (req, res) => {
 
 
 
-app.get("/get-medical-records/:email", async (req, res) => {
-  const { email } = req.params;
+app.get("/get-medical-records", async (req, res) => {
+  const userEmail = req.query.email || req.user?.email; // Get email from query parameter or session
+
+  if (!userEmail) {
+    return res.status(400).json({ message: "Email not provided" });
+  }
 
   try {
-    const medicalRecord = await db.collection("MedicalRecords").findOne({ userEmail: email });
+    const medicalRecord = await db.collection("MedicalRecords").findOne({ userEmail: userEmail });
 
     if (medicalRecord) {
       res.status(200).json(medicalRecord);
@@ -481,6 +485,7 @@ app.get("/get-medical-records/:email", async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 });
+
 
 
 
