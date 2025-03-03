@@ -302,65 +302,185 @@ let pythonProcess = null;
 
 // Function to start a new Python process (ensure it doesn't exit)
 function startPythonProcess() {
-    if (pythonProcess) {
-        console.log("Killing old Python process before starting a new one.");
-        pythonProcess.kill('SIGTERM');
-        pythonProcess = null;
-    }
+  if (pythonProcess) {
+    console.log("Killing old Python process before starting a new one.");
+    pythonProcess.kill('SIGTERM');
+    pythonProcess = null;
+  }
 
-    pythonProcess = spawn("python", ["symptom_checker.py"], { stdio: ["pipe", "pipe", "pipe"] });
+  pythonProcess = spawn("python", ["symptom_checker.py"], { stdio: ["pipe", "pipe", "pipe"] });
 
-    pythonProcess.stdout.on("data", (data) => {
-        console.log(`Python Output: ${data.toString().trim()}`);
-    });
+  pythonProcess.stdout.on("data", (data) => {
+    console.log(`Python Output: ${data.toString().trim()}`);
+  });
 
-    pythonProcess.stderr.on("data", (data) => {
-        console.error(`Python Error: ${data.toString().trim()}`);
-    });
+  pythonProcess.stderr.on("data", (data) => {
+    console.error(`Python Error: ${data.toString().trim()}`);
+  });
 
-    pythonProcess.on("close", (code) => {
-        console.log(`Python process exited with code ${code}`);
-        pythonProcess = null; // Allow restarting if needed
-    });
+  pythonProcess.on("close", (code) => {
+    console.log(`Python process exited with code ${code}`);
+    pythonProcess = null; // Allow restarting if needed
+  });
 
-    console.log("New Python process started and waiting for input.");
+  console.log("New Python process started and waiting for input.");
 }
 
 // Restart Python process on every website refresh
 app.get("/", (req, res) => {
-    console.log(`Page refresh detected: ${req.url}`);
-    startPythonProcess();  // Restart AI every refresh
-    res.sendFile(path.join(__dirname, "../PulseTech-FrontEnd", "index.html"));
+  console.log(`Page refresh detected: ${req.url}`);
+  startPythonProcess();  // Restart AI every refresh
+  res.sendFile(path.join(__dirname, "../PulseTech-FrontEnd", "index.html"));
 });
 
 // Start the diagnosis session
 app.post("/start-diagnosis", (req, res) => {
-    startPythonProcess(); // Ensure a fresh start
-    res.json({ message: "Diagnosis session started. Please enter your primary symptom" });
+  startPythonProcess(); // Ensure a fresh start
+  res.json({ message: "Diagnosis session started. Please enter your primary symptom" });
 });
 
 // Handle user responses
 app.post("/answer-question", (req, res) => {
-    const { userInput } = req.body;
+  const { userInput } = req.body;
 
-    if (!pythonProcess) {
-        return res.status(400).json({ error: "Diagnosis session not started." });
-    }
+  if (!pythonProcess) {
+    return res.status(400).json({ error: "Diagnosis session not started." });
+  }
 
-    let output = "";
+  let output = "";
 
-    pythonProcess.stdout.on("data", (data) => {
-        output += data.toString();
-    });
+  pythonProcess.stdout.on("data", (data) => {
+    output += data.toString();
+  });
 
-    pythonProcess.stdin.write(userInput + "\n");
+  pythonProcess.stdin.write(userInput + "\n");
 
-    setTimeout(() => {
-        res.json({ message: output.trim() });
-    }, 200);
+  setTimeout(() => {
+    res.json({ message: output.trim() });
+  }, 200);
 });
 
 
+
+app.post("/save-medical-records", async (req, res) => {
+  const {
+    email,
+    fullName,
+    dateOfBirth,
+    gender,
+    bloodType,
+    emergencyContact,
+    medicalHistory,
+    medications,
+    vaccinations,
+    smokingStatus,
+    alcoholConsumption,
+    exerciseRoutine,
+    sleepPatterns,
+    healthLogs,
+    labResults,
+    doctorVisits,
+    heartRate,
+    stepCount,
+    sleepTracking,
+    bloodOxygen,
+    organDonorStatus,
+    medicalDirectives,
+  } = req.body;
+
+  try {
+    // Ensure the email field is not null
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    // Insert or update the medical record
+    const existingRecord = await db.collection("MedicalRecords").findOne({ userEmail: email });
+
+    if (existingRecord) {
+      // Update the existing record
+      await db.collection("MedicalRecords").updateOne(
+        { userEmail: email },
+        {
+          $set: {
+            fullName,
+            dateOfBirth,
+            gender,
+            bloodType,
+            emergencyContact,
+            medicalHistory,
+            medications,
+            vaccinations,
+            smokingStatus,
+            alcoholConsumption,
+            exerciseRoutine,
+            sleepPatterns,
+            healthLogs,
+            labResults,
+            doctorVisits,
+            heartRate,
+            stepCount,
+            sleepTracking,
+            bloodOxygen,
+            organDonorStatus,
+            medicalDirectives,
+          },
+        }
+      );
+      return res.status(200).json({ message: "Medical records updated successfully" });
+    } else {
+      // Create a new record
+      await db.collection("MedicalRecords").insertOne({
+        userEmail: email,
+        fullName,
+        dateOfBirth,
+        gender,
+        bloodType,
+        emergencyContact,
+        medicalHistory,
+        medications,
+        vaccinations,
+        smokingStatus,
+        alcoholConsumption,
+        exerciseRoutine,
+        sleepPatterns,
+        healthLogs,
+        labResults,
+        doctorVisits,
+        heartRate,
+        stepCount,
+        sleepTracking,
+        bloodOxygen,
+        organDonorStatus,
+        medicalDirectives,
+      });
+      return res.status(201).json({ message: "Medical records saved successfully" });
+    }
+  } catch (error) {
+    console.error("Error saving medical records:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+
+
+
+app.get("/get-medical-records/:email", async (req, res) => {
+  const { email } = req.params;
+
+  try {
+    const medicalRecord = await db.collection("MedicalRecords").findOne({ userEmail: email });
+
+    if (medicalRecord) {
+      res.status(200).json(medicalRecord);
+    } else {
+      res.status(404).json({ message: "No medical records found for this user" });
+    }
+  } catch (error) {
+    console.error("Error fetching medical records:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
 
 
 
