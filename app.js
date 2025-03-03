@@ -513,40 +513,28 @@ app.get("/get-doctors", async (req, res) => {
 
 // Create an Appointment
 app.post("/create-appointment", async (req, res) => {
-  const { doctorEmail, patientEmail, date, reason } = req.body;
-
-  // Validate required fields
-  if (!doctorEmail || !patientEmail || !date || !reason) {
-    return res.status(400).json({ message: "All fields are required" });
-  }
-
   try {
-    // Check if an appointment already exists for this date and doctor-patient pair
-    const existingAppointment = await db.collection("Appointments").findOne({
-      doctorEmail,
-      patientEmail,
-      date,
-    });
+    const { doctorEmail, patientEmail, date, reason, status = "Scheduled" } = req.body;
 
-    if (existingAppointment) {
-      return res.status(400).json({ message: "An appointment already exists on this date" });
+    if (!doctorEmail || !patientEmail || !date || !reason) {
+      return res.status(400).json({ message: "All fields are required" });
     }
 
-    // Insert new appointment into the database
     await db.collection("Appointments").insertOne({
       doctorEmail,
       patientEmail,
       date,
       reason,
-      status: "Scheduled", // Default status
+      status,
     });
 
-    res.status(201).json({ message: "Appointment created successfully" });
+    res.status(201).json({ message: "Appointment scheduled successfully" });
   } catch (error) {
     console.error("Error creating appointment:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
+
 
 
 // Get Appointments for Logged-In User
