@@ -298,63 +298,67 @@ app.post("/getUserProfile", async (req, res) => {
 
 
 
+let pythonProcess = null;
 
-
-let pythonProcess = null;  // Declare pythonProcess outside so it persists
-
-app.post("/start-diagnosis", (req, res) => {
-    // Kill any ongoing process to ensure a clean state before starting a new one
+// Function to start a new Python process (ensure it doesn't exit)
+function startPythonProcess() {
     if (pythonProcess) {
-        pythonProcess.kill('SIGTERM');  // Gracefully kill the existing Python process
+        console.log("Killing old Python process before starting a new one.");
+        pythonProcess.kill('SIGTERM');
         pythonProcess = null;
     }
 
-    pythonProcess = spawn("python", ["symptom_checker.py"]);
-    let initialOutput = "";
+    pythonProcess = spawn("python", ["symptom_checker.py"], { stdio: ["pipe", "pipe", "pipe"] });
 
     pythonProcess.stdout.on("data", (data) => {
-        initialOutput += data.toString();
+        console.log(`Python Output: ${data.toString().trim()}`);
     });
 
     pythonProcess.stderr.on("data", (data) => {
-        console.error(`Python error: ${data}`);
+        console.error(`Python Error: ${data.toString().trim()}`);
     });
 
     pythonProcess.on("close", (code) => {
         console.log(`Python process exited with code ${code}`);
-        pythonProcess = null;  // Reset the process after it exits
+        pythonProcess = null; // Allow restarting if needed
     });
 
-    // Wait for a moment before sending the response to ensure it's initialized
-    setTimeout(() => {
-        res.json({ message: initialOutput.trim() });
-    },200);  // Adjust timeout if necessary to ensure it gets enough time to respond
+    console.log("New Python process started and waiting for input.");
+}
+
+// Restart Python process on every website refresh
+app.get("/", (req, res) => {
+    console.log(`Page refresh detected: ${req.url}`);
+    startPythonProcess();  // Restart AI every refresh
+    res.sendFile(path.join(__dirname, "../PulseTech-FrontEnd", "index.html"));
 });
 
+// Start the diagnosis session
+app.post("/start-diagnosis", (req, res) => {
+    startPythonProcess(); // Ensure a fresh start
+    res.json({ message: "Diagnosis session started. Please enter your primary symptom" });
+});
 
-
-
-// Send User Answers to Python Process
+// Handle user responses
 app.post("/answer-question", (req, res) => {
-  const { userInput } = req.body;
+    const { userInput } = req.body;
 
-  if (!pythonProcess) {
-    return res.status(400).json({ error: "Diagnosis session not started." });
-  }
+    if (!pythonProcess) {
+        return res.status(400).json({ error: "Diagnosis session not started." });
+    }
 
-  pythonProcess.stdin.write(userInput + "\n");
+    let output = "";
 
-  let output = "";
+    pythonProcess.stdout.on("data", (data) => {
+        output += data.toString();
+    });
 
-  pythonProcess.stdout.on("data", (data) => {
-    output += data.toString();
-  });
+    pythonProcess.stdin.write(userInput + "\n");
 
-  setTimeout(() => {
-    res.json({ message: output.trim() });
-  }, 200); // Small delay to allow Python to process
+    setTimeout(() => {
+        res.json({ message: output.trim() });
+    }, 200);
 });
-
 
 
 

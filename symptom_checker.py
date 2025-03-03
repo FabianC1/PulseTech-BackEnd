@@ -99,6 +99,7 @@ def tree_to_code(tree, feature_names):
 
     symptoms_present = []
     print("\nMay I know the primary symptom you are experiencing?")
+    sys.stdout.flush()
     
     # Ask the primary symptom only once
     while True:
@@ -107,6 +108,7 @@ def tree_to_code(tree, feature_names):
         
         if conf == 1:
             print("\nSearches related to input: ")
+            sys.stdout.flush()
             for num, it in enumerate(cnf_dis):
                 print(str(num + 1) + ")", it.replace("_", " "))
             conf_inp = 0
@@ -230,4 +232,10 @@ def main():
     tree_to_code(clf, cols)  # Running the main disease prediction function with trained classifier
 
 if __name__ == "__main__":
-        main()
+    try:
+        print("Diagnosis session started. Please enter your primary symptom:")
+        sys.stdout.flush()  # Ensure output is sent immediately
+        main()  # Run the AI model
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)  # Log errors to prevent crashes
+        sys.stdout.flush()
