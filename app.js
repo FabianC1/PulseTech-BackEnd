@@ -626,12 +626,11 @@ app.get("/collections/Medications", async (req, res) => {
 });
 
 
-// Save medication details to the user's medical records
 app.post("/save-medication", async (req, res) => {
   const { email, medication } = req.body; // Extract medication data from the request
 
-  if (!email || !medication || !medication.name || !medication.duration) {
-    return res.status(400).json({ message: "Invalid data. Medication name and duration are required." });
+  if (!email || !medication || !medication.name || !medication.timeToTake) {
+    return res.status(400).json({ message: "Invalid data. Medication name and time to take are required." });
   }
 
   try {
@@ -666,6 +665,8 @@ app.post("/save-medication", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
+
+
 
 
 
