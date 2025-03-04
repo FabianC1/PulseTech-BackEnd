@@ -608,6 +608,30 @@ app.get("/view-patient-records", async (req, res) => {
 
 
 
+
+// Fetch Medications from MongoDB based on the medication name query
+app.get("/collections/Medications", async (req, res) => {
+  try {
+    const { name } = req.query; // Get the medication name from the query
+    const medicationsCollection = db.collection("Medications");
+
+    const medications = await medicationsCollection
+      .find({ name: { $regex: name, $options: "i" } }) // Perform a case-insensitive search
+      .toArray();
+
+    if (medications && medications.length > 0) {
+      res.json(medications);
+    } else {
+      res.status(404).send({ message: "No medications found" });
+    }
+  } catch (error) {
+    console.error("Error fetching medications:", error);
+    res.status(500).send({ message: "Error fetching medications" });
+  }
+});
+
+
+
 // Serve index.html for root URL
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "../PulseTech-FrontEnd", "index.html"));
