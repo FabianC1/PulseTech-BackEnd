@@ -611,19 +611,66 @@ app.get("/view-patient-records", async (req, res) => {
 
 app.get("/collections/Medications", async (req, res) => {
   const { name } = req.query;
-  
+
   try {
     // Match medications by name (case insensitive)
     const medications = await db.collection("Medications").find({
       name: { $regex: name, $options: "i" }  // Case-insensitive search
     }).toArray();
-    
+
     res.json(medications);  // Return the medications as JSON
   } catch (error) {
     console.error("Error fetching medications:", error);
     res.status(500).send({ message: "Error fetching medications" });
   }
 });
+
+
+// Save medication details to the user's medical records
+app.post("/save-medication", async (req, res) => {
+  const { email, medication } = req.body; // Extract medication data from the request
+
+  if (!email || !medication || !medication.name) {
+    return res.status(400).json({ message: "Invalid data. Medication name is required." });
+  }
+
+  try {
+    // Find the user's medical record using their email
+    const userRecord = await db.collection("MedicalRecords").findOne({ userEmail: email });
+
+    if (!userRecord) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    // If medications already exist, append the new medication to the list
+    if (userRecord.medications) {
+      userRecord.medications.push(medication);
+    } else {
+      // If no medications exist, initialize the array with the new medication
+      userRecord.medications = [medication];
+    }
+
+    // Update the user's medical record with the new medications list
+    const result = await db.collection("MedicalRecords").updateOne(
+      { userEmail: email },
+      { $set: { medications: userRecord.medications } }
+    );
+
+    if (result.modifiedCount > 0) {
+      res.status(200).json({ message: "Medication saved successfully!" });
+    } else {
+      res.status(500).json({ message: "Failed to update medical records." });
+    }
+  } catch (error) {
+    console.error("Error saving medication:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+
+
+
+
 
 
 
