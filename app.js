@@ -732,6 +732,9 @@ function calculateNextDoseTime(currentTime, frequency) {
   const nextDose = new Date(currentTime);
 
   switch (frequency) {
+    case "Every hour":
+      nextDose.setHours(nextDose.getHours() + 1);
+      break;
     case "Every 4 hours":
       nextDose.setHours(nextDose.getHours() + 4);
       break;
@@ -763,6 +766,9 @@ function calculateNextDoseTime(currentTime, frequency) {
   const nextDose = new Date(currentTime);
 
   switch (frequency) {
+    case "Every hour":
+      nextDose.setHours(nextDose.getHours() + 1);
+      break;
     case "Every 4 hours":
       nextDose.setHours(nextDose.getHours() + 4);
       break;
