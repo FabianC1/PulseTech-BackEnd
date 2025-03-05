@@ -669,22 +669,22 @@ app.post("/save-medication", async (req, res) => {
 
 
 
-
-
 app.post("/mark-medication-taken", async (req, res) => {
-  const { email, medicationName } = req.body;
+  const { email, medicationName } = req.body; // Get user email & medication name
 
   if (!email || !medicationName) {
     return res.status(400).json({ message: "Email and medication name are required." });
   }
 
   try {
+    // Find the user's medical record
     const userRecord = await db.collection("MedicalRecords").findOne({ userEmail: email });
 
     if (!userRecord) {
       return res.status(404).json({ message: "User not found." });
     }
 
+    // Find the specific medication in the user's records
     const medicationIndex = userRecord.medications.findIndex(med => med.name === medicationName);
 
     if (medicationIndex === -1) {
@@ -693,17 +693,69 @@ app.post("/mark-medication-taken", async (req, res) => {
 
     const now = new Date();
 
-    userRecord.medications[medicationIndex].logs.push({ time: now.toISOString(), status: "Taken" });
+    // Determine if the medication is marked as taken or missed
+    const medication = userRecord.medications[medicationIndex];
+    const nextDose = new Date(medication.nextDoseTime);
+    const diffMinutes = Math.floor((nextDose - now) / 60000);
 
-    userRecord.medications[medicationIndex].nextDoseTime = calculateNextDoseTime(now, userRecord.medications[medicationIndex].frequency);
+    // If it's more than 30 minutes past the next dose time, mark as missed
+    if (diffMinutes < -30) {
+      medication.status = "Missed";
+      medication.nextDoseTime = null; // Stop showing next dose
+    } else {
+      // Log the taken dose
+      if (!medication.logs) medication.logs = [];
+      medication.logs.push({ time: now.toISOString(), status: "Taken" });
 
-    await db.collection("MedicalRecords").updateOne({ userEmail: email }, { $set: { medications: userRecord.medications } });
+      // Calculate the next dose time
+      medication.nextDoseTime = calculateNextDoseTime(now, medication.frequency);
+    }
 
-    res.status(200).json({ message: "Medication marked as taken successfully!" });
+    // Update the medical record in the database
+    const updatedMedications = userRecord.medications.map((med, index) =>
+      index === medicationIndex ? medication : med
+    );
+
+    await db.collection("MedicalRecords").updateOne(
+      { userEmail: email },
+      { $set: { medications: updatedMedications } }
+    );
+
+    res.status(200).json({ message: "Medication status updated successfully!" });
   } catch (error) {
+    console.error("Error marking medication as taken:", error);
     res.status(500).json({ message: "Server error" });
   }
 });
+
+function calculateNextDoseTime(currentTime, frequency) {
+  const nextDose = new Date(currentTime);
+
+  switch (frequency) {
+    case "Every 4 hours":
+      nextDose.setHours(nextDose.getHours() + 4);
+      break;
+    case "Every 6 hours":
+      nextDose.setHours(nextDose.getHours() + 6);
+      break;
+    case "Every 8 hours":
+      nextDose.setHours(nextDose.getHours() + 8);
+      break;
+    case "Every 12 hours":
+      nextDose.setHours(nextDose.getHours() + 12);
+      break;
+    case "Once a day":
+      nextDose.setDate(nextDose.getDate() + 1);
+      break;
+    case "Once a week":
+      nextDose.setDate(nextDose.getDate() + 7);
+      break;
+    default:
+      return null; // If frequency is not recognized, return null
+  }
+
+  return nextDose.toISOString();
+}
 
 
 // Function to calculate next dose time based on frequency
