@@ -671,23 +671,20 @@ app.post("/save-medication", async (req, res) => {
 
 
 
-// Save medication history when a user marks a dose as taken
 app.post("/mark-medication-taken", async (req, res) => {
-  const { email, medicationName } = req.body; // Get user email & medication name
+  const { email, medicationName } = req.body;
 
   if (!email || !medicationName) {
     return res.status(400).json({ message: "Email and medication name are required." });
   }
 
   try {
-    // Find the user's medical record
     const userRecord = await db.collection("MedicalRecords").findOne({ userEmail: email });
 
     if (!userRecord) {
       return res.status(404).json({ message: "User not found." });
     }
 
-    // Find the specific medication in the user's records
     const medicationIndex = userRecord.medications.findIndex(med => med.name === medicationName);
 
     if (medicationIndex === -1) {
@@ -696,34 +693,18 @@ app.post("/mark-medication-taken", async (req, res) => {
 
     const now = new Date();
 
-    // Update medication log with "Taken" status
-    const updatedMedications = userRecord.medications.map((med, index) => {
-      if (index === medicationIndex) {
-        // Log the taken dose
-        if (!med.logs) med.logs = [];
-        med.logs.push({ time: now.toISOString(), status: "Taken" });
+    userRecord.medications[medicationIndex].logs.push({ time: now.toISOString(), status: "Taken" });
 
-        // Calculate the next dose time
-        med.nextDoseTime = calculateNextDoseTime(now, med.frequency);
+    userRecord.medications[medicationIndex].nextDoseTime = calculateNextDoseTime(now, userRecord.medications[medicationIndex].frequency);
 
-        // Reduce pill count if applicable
-        if (med.pillsLeft) med.pillsLeft -= 1;
-      }
-      return med;
-    });
-
-    // Update the medical records in the database
-    await db.collection("MedicalRecords").updateOne(
-      { userEmail: email },
-      { $set: { medications: updatedMedications } }
-    );
+    await db.collection("MedicalRecords").updateOne({ userEmail: email }, { $set: { medications: userRecord.medications } });
 
     res.status(200).json({ message: "Medication marked as taken successfully!" });
   } catch (error) {
-    console.error("Error marking medication as taken:", error);
     res.status(500).json({ message: "Server error" });
   }
 });
+
 
 // Function to calculate next dose time based on frequency
 function calculateNextDoseTime(currentTime, frequency) {
