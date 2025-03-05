@@ -693,35 +693,40 @@ app.post("/mark-medication-taken", async (req, res) => {
 
     const now = new Date();
     const medication = userRecord.medications[medicationIndex];
-    const nextDose = new Date(medication.nextDoseTime);
-    const diffMinutes = Math.floor((nextDose - now) / 60000);
 
-    // If it's more than 30 minutes past the next dose time, mark as missed but still set next dose
-    if (diffMinutes < -30) {
-      medication.status = "Missed";
-    } else {
-      // Mark dose as taken
-      if (!medication.logs) medication.logs = [];
-      medication.logs.push({ time: now.toISOString(), status: "Taken" });
-    }
+    // Debugging: Print logs to check values
+    console.log("Processing Mark as Taken:", { email, medicationName, nextDoseTime: medication.nextDoseTime });
 
-    // Always update next dose time so the cycle continues
-    medication.nextDoseTime = calculateNextDoseTime(nextDose, medication.frequency);
+    if (!medication.logs) medication.logs = [];
+
+    // Add a new log entry
+    medication.logs.push({ time: now.toISOString(), status: "Taken" });
+
+    // Calculate the next dose time
+    medication.nextDoseTime = calculateNextDoseTime(now, medication.frequency);
 
     // Update the medical record in the database
-    await db.collection("MedicalRecords").updateOne(
-      { userEmail: email },
-      { $set: { medications: userRecord.medications } }
+    const updatedMedications = userRecord.medications.map((med, index) =>
+      index === medicationIndex ? medication : med
     );
 
-    res.status(200).json({ message: "Medication status updated successfully!" });
+    const result = await db.collection("MedicalRecords").updateOne(
+      { userEmail: email },
+      { $set: { medications: updatedMedications } }
+    );
+
+    if (result.modifiedCount === 0) {
+      return res.status(500).json({ message: "Failed to update medication record." });
+    }
+
+    res.status(200).json({ message: "Medication marked as taken successfully!" });
   } catch (error) {
-    console.error("Error marking medication as taken:", error);
+    console.error(" Error in /mark-medication-taken:", error);
     res.status(500).json({ message: "Server error" });
   }
 });
 
-
+// Error occurs in this function
 function calculateNextDoseTime(currentTime, frequency) {
   const nextDose = new Date(currentTime);
 
@@ -751,8 +756,9 @@ function calculateNextDoseTime(currentTime, frequency) {
       return null; // If frequency is not recognized, return null
   }
 
-  return nextDose.toISOString();
+  return nextDose.toISOString();  // ERROR happens here if `nextDose` is invalid
 }
+
 
 
 
