@@ -692,33 +692,26 @@ app.post("/mark-medication-taken", async (req, res) => {
     }
 
     const now = new Date();
-
-    // Determine if the medication is marked as taken or missed
     const medication = userRecord.medications[medicationIndex];
     const nextDose = new Date(medication.nextDoseTime);
     const diffMinutes = Math.floor((nextDose - now) / 60000);
 
-    // If it's more than 30 minutes past the next dose time, mark as missed
+    // If it's more than 30 minutes past the next dose time, mark as missed but still set next dose
     if (diffMinutes < -30) {
       medication.status = "Missed";
-      medication.nextDoseTime = null; // Stop showing next dose
     } else {
-      // Log the taken dose
+      // Mark dose as taken
       if (!medication.logs) medication.logs = [];
       medication.logs.push({ time: now.toISOString(), status: "Taken" });
-
-      // Calculate the next dose time
-      medication.nextDoseTime = calculateNextDoseTime(now, medication.frequency);
     }
 
-    // Update the medical record in the database
-    const updatedMedications = userRecord.medications.map((med, index) =>
-      index === medicationIndex ? medication : med
-    );
+    // Always update next dose time so the cycle continues
+    medication.nextDoseTime = calculateNextDoseTime(nextDose, medication.frequency);
 
+    // Update the medical record in the database
     await db.collection("MedicalRecords").updateOne(
       { userEmail: email },
-      { $set: { medications: updatedMedications } }
+      { $set: { medications: userRecord.medications } }
     );
 
     res.status(200).json({ message: "Medication status updated successfully!" });
@@ -728,6 +721,7 @@ app.post("/mark-medication-taken", async (req, res) => {
   }
 });
 
+
 function calculateNextDoseTime(currentTime, frequency) {
   const nextDose = new Date(currentTime);
 
@@ -760,39 +754,6 @@ function calculateNextDoseTime(currentTime, frequency) {
   return nextDose.toISOString();
 }
 
-
-// Function to calculate next dose time based on frequency
-function calculateNextDoseTime(currentTime, frequency) {
-  const nextDose = new Date(currentTime);
-
-  switch (frequency) {
-    case "Every hour":
-      nextDose.setHours(nextDose.getHours() + 1);
-      break;
-    case "Every 4 hours":
-      nextDose.setHours(nextDose.getHours() + 4);
-      break;
-    case "Every 6 hours":
-      nextDose.setHours(nextDose.getHours() + 6);
-      break;
-    case "Every 8 hours":
-      nextDose.setHours(nextDose.getHours() + 8);
-      break;
-    case "Every 12 hours":
-      nextDose.setHours(nextDose.getHours() + 12);
-      break;
-    case "Once a day":
-      nextDose.setDate(nextDose.getDate() + 1);
-      break;
-    case "Once a week":
-      nextDose.setDate(nextDose.getDate() + 7);
-      break;
-    default:
-      return null; // If frequency is not recognized, return null
-  }
-
-  return nextDose.toISOString();
-}
 
 
 
