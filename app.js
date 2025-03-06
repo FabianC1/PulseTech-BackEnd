@@ -667,6 +667,28 @@ app.post("/save-medication", async (req, res) => {
 });
 
 
+function calculateNextDoseTime(currentTime, frequency) {
+  const nextDose = new Date(currentTime);
+
+  const freqMap = {
+    "Every hour": 1,
+    "Every 2 hours": 2,
+    "Every 4 hours": 4,
+    "Every 6 hours": 6,
+    "Every 8 hours": 8,
+    "Every 12 hours": 12,
+    "Once a day": 24,
+    "Once a week": 168,
+  };
+
+  if (!freqMap[frequency]) return null; // Prevent errors
+
+  nextDose.setHours(nextDose.getHours() + freqMap[frequency]);
+  return nextDose.toISOString();
+}
+
+
+
 //  Mark medication as "Taken"
 app.post("/mark-medication-taken", async (req, res) => {
   const { email, medicationName } = req.body;
@@ -738,22 +760,6 @@ app.post("/mark-medication-missed", async (req, res) => {
   }
 });
 
-//  Function to calculate next dose time
-function calculateNextDoseTime(currentTime, frequency) {
-  const nextDose = new Date(currentTime);
-  const freqMap = {
-    "Every hour": 1,
-    "Every 2 hours": 2,
-    "Every 4 hours": 4,
-    "Every 6 hours": 6,
-    "Every 8 hours": 8,
-    "Every 12 hours": 12,
-    "Once a day": 24,
-    "Once a week": 168
-  };
-  nextDose.setHours(nextDose.getHours() + (freqMap[frequency] || 0));
-  return nextDose.toISOString();
-}
 
 
 
