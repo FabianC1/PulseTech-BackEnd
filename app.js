@@ -809,12 +809,14 @@ app.get("/get-messages", async (req, res) => {
     const messages = await db.collection("messages")
       .find({
         $or: [
-          { sender, recipient },
-          { sender: recipient, recipient: sender }
+          { sender, receiver: recipient },
+          { sender: recipient, receiver: sender }
         ]
       })
-      .sort({ timestamp: 1 }) // Sort by oldest to newest
+      .sort({ timestamp: 1 }) // Oldest to newest
       .toArray();
+
+    console.log("Messages sent to frontend:", messages); // Debugging
 
     res.status(200).json(messages);
   } catch (error) {
@@ -823,28 +825,33 @@ app.get("/get-messages", async (req, res) => {
   }
 });
 
+
+
 app.post("/send-message", async (req, res) => {
   try {
-    const { sender, recipient, message } = req.body;
+      const { sender, receiver, message, attachment, timestamp } = req.body;
 
-    if (!sender || !recipient || !message.trim()) {
-      return res.status(400).json({ message: "Sender, recipient, and message are required." });
-    }
+      if (!sender || !receiver) {
+          return res.status(400).json({ message: "Sender and receiver are required." });
+      }
 
-    const newMessage = {
-      sender,
-      recipient,
-      message,
-      timestamp: new Date().toISOString(), // Store message time
-    };
+      const messageData = {
+          sender,
+          receiver,
+          message: message || null,
+          attachment: attachment || null,
+          timestamp,
+      };
 
-    await db.collection("messages").insertOne(newMessage);
-    res.status(201).json({ message: "Message sent successfully!", newMessage });
+      await db.collection("messages").insertOne(messageData);
+
+      res.status(201).json({ message: "Message sent successfully!" });
   } catch (error) {
-    console.error("Error sending message:", error);
-    res.status(500).json({ message: "Internal server error" });
+      console.error("Error sending message:", error);
+      res.status(500).json({ message: "Internal server error" });
   }
 });
+
 
 
 
