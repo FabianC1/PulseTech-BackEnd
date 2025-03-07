@@ -765,6 +765,44 @@ app.post("/mark-medication-missed", async (req, res) => {
 
 
 
+app.get("/get-contacts", async (req, res) => {
+  try {
+    const { email } = req.query; // Get email from query params
+
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    // Find the logged-in user
+    const user = await db.collection("Users").findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Determine the user's role
+    const userRole = user.role;
+
+    // If user is a patient, get all doctors. If user is a doctor, get all patients.
+    const contacts = await db
+      .collection("Users")
+      .find({ role: userRole === "doctor" ? "patient" : "doctor" })
+      .project({ fullName: 1, email: 1, profilePicture: 1 }) // Select fields to return
+      .toArray();
+
+    res.status(200).json(contacts);
+  } catch (error) {
+    console.error("Error fetching contacts:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+
+
+
+
+
+
 // Serve index.html for root URL
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "../PulseTech-FrontEnd", "index.html"));
