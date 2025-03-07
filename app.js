@@ -816,8 +816,6 @@ app.get("/get-messages", async (req, res) => {
       .sort({ timestamp: 1 }) // Oldest to newest
       .toArray();
 
-    console.log("Messages sent to frontend:", messages); // Debugging
-
     res.status(200).json(messages);
   } catch (error) {
     console.error("Error fetching messages:", error);
