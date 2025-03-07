@@ -50,8 +50,13 @@ app.use(express.static(path.join(__dirname, "../PulseTech-FrontEnd")));
 const imagePath = path.join(__dirname, "Static", "Images");
 app.use("/image", express.static(imagePath));
 
-// Middleware to log all incoming requests (excluding favicon.ico)
 app.use((req, res, next) => {
+  // Skip logging for /get-messages route
+  if (req.url.startsWith("/get-messages")) {
+    return next();  // Skip logging and continue to the next middleware
+  }
+
+  // Otherwise, log the request
   if (req.url !== "/favicon.ico") {
     console.log("Request URL:", req.url);
   }
