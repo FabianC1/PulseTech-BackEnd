@@ -632,32 +632,28 @@ app.get("/collections/Medications", async (req, res) => {
 
 
 app.post("/save-medication", async (req, res) => {
-  const { email, medication } = req.body; // Extract medication data from the request
+  const { email, medication } = req.body;
 
   if (!email || !medication || !medication.name || !medication.timeToTake) {
     return res.status(400).json({ message: "Invalid data. Medication name and time to take are required." });
   }
 
   try {
-    // Find the user's medical record using their email
     const userRecord = await db.collection("MedicalRecords").findOne({ userEmail: email });
 
     if (!userRecord) {
       return res.status(404).json({ message: "User not found." });
     }
 
-    // If medications already exist, append the new medication to the list
-    if (userRecord.medications) {
-      userRecord.medications.push(medication);
-    } else {
-      // If no medications exist, initialize the array with the new medication
-      userRecord.medications = [medication];
-    }
+    // Ensure medication logs exist
+    medication.logs = medication.logs || []; // Ensure logs array is initialized
 
-    // Update the user's medical record with the new medications list
+    const updatedMedications = userRecord.medications || [];
+    updatedMedications.push(medication);
+
     const result = await db.collection("MedicalRecords").updateOne(
       { userEmail: email },
-      { $set: { medications: userRecord.medications } }
+      { $set: { medications: updatedMedications } }
     );
 
     if (result.modifiedCount > 0) {
@@ -670,6 +666,8 @@ app.post("/save-medication", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
+
+
 
 
 function calculateNextDoseTime(currentTime, frequency) {
