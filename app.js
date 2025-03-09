@@ -855,6 +855,70 @@ app.post("/send-message", async (req, res) => {
 
 
 
+app.get("/get-health-dashboard", async (req, res) => {
+  try {
+    const { email } = req.query;
+    const user = await db.collection("Users").findOne({ email });
+
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    const recentAppointments = await db.collection("Appointments")
+      .find({ email })
+      .sort({ date: -1 })
+      .limit(5)
+      .toArray();
+
+    const upcomingAppointments = await db.collection("Appointments")
+      .find({ email, date: { $gte: new Date() } })
+      .sort({ date: 1 })
+      .limit(5)
+      .toArray();
+
+    const medications = user.medications || [];
+
+    const missedMeds = medications.filter(med => med.logs.some(log => log.status === "Missed")).length;
+    const takenMeds = medications.filter(med => med.logs.some(log => log.status === "Taken")).length;
+
+    // 🔹 Ensure `medicationStats` exists to avoid frontend crashes
+    const medicationStats = {
+      dates: [], // 🔥 Default empty array to prevent `slice()` error
+      taken: [],
+      missed: [],
+    };
+
+    medications.forEach(med => {
+      med.logs.forEach(log => {
+        const date = log.time.split("T")[0]; // Extract date part only
+
+        if (!medicationStats.dates.includes(date)) {
+          medicationStats.dates.push(date);
+          medicationStats.taken.push(0);
+          medicationStats.missed.push(0);
+        }
+
+        const index = medicationStats.dates.indexOf(date);
+        if (log.status === "Taken") {
+          medicationStats.taken[index]++;
+        } else if (log.status === "Missed") {
+          medicationStats.missed[index]++;
+        }
+      });
+    });
+
+    res.json({
+      missedMeds,
+      recentAppointments,
+      upcomingAppointments,
+      medicationStats, // 🔥 Always ensure it's present
+    });
+
+  } catch (error) {
+    console.error("Error fetching dashboard data:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+
 
 
 
