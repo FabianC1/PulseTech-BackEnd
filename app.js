@@ -395,16 +395,20 @@ app.post("/save-medical-records", async (req, res) => {
   } = req.body;
 
   try {
-    // Ensure the email field is not null
     if (!email) {
       return res.status(400).json({ message: "Email is required" });
     }
 
-    // Insert or update the medical record
     const existingRecord = await db.collection("MedicalRecords").findOne({ userEmail: email });
 
     if (existingRecord) {
-      // Update the existing record
+      // Ensure heartRate is an array before pushing new data
+      const heartRateLogs = Array.isArray(existingRecord.heartRate) ? existingRecord.heartRate : [];
+
+      if (heartRate !== undefined) {
+        heartRateLogs.push({ time: new Date().toISOString(), value: heartRate });
+      }
+
       await db.collection("MedicalRecords").updateOne(
         { userEmail: email },
         {
@@ -424,7 +428,7 @@ app.post("/save-medical-records", async (req, res) => {
             healthLogs,
             labResults,
             doctorVisits,
-            heartRate,
+            heartRate: heartRateLogs, // Append new heart rate logs
             stepCount,
             sleepTracking,
             bloodOxygen,
@@ -433,9 +437,10 @@ app.post("/save-medical-records", async (req, res) => {
           },
         }
       );
+
       return res.status(200).json({ message: "Medical records updated successfully" });
     } else {
-      // Create a new record
+      // Create a new record with heartRate logs
       await db.collection("MedicalRecords").insertOne({
         userEmail: email,
         fullName,
@@ -453,13 +458,14 @@ app.post("/save-medical-records", async (req, res) => {
         healthLogs,
         labResults,
         doctorVisits,
-        heartRate,
+        heartRate: heartRate !== undefined ? [{ time: new Date().toISOString(), value: heartRate }] : [],
         stepCount,
         sleepTracking,
         bloodOxygen,
         organDonorStatus,
         medicalDirectives,
       });
+
       return res.status(201).json({ message: "Medical records saved successfully" });
     }
   } catch (error) {
@@ -467,6 +473,8 @@ app.post("/save-medical-records", async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 });
+
+
 
 
 
@@ -858,73 +866,81 @@ app.post("/send-message", async (req, res) => {
 
 app.get("/get-health-dashboard", async (req, res) => {
   try {
-      const { email } = req.query;
-      console.log("Health Dashboard API Called for:", email); // Debugging
+    const { email } = req.query;
+    console.log("Health Dashboard API Called for:", email);
 
-      const user = await db.collection("Users").findOne({ email });
-      if (!user) {
-          console.log("User not found in database.");
-          return res.status(404).json({ message: "User not found" });
-      }
+    const user = await db.collection("Users").findOne({ email });
+    if (!user) {
+      console.log("User not found in database.");
+      return res.status(404).json({ message: "User not found" });
+    }
 
-      const recentAppointments = await db.collection("Appointments")
-          .find({ email, status: "Completed" })
-          .sort({ date: -1 })
-          .limit(3)
-          .toArray();
+    const recentAppointments = await db.collection("Appointments")
+      .find({ email, status: "Completed" })
+      .sort({ date: -1 })
+      .limit(3)
+      .toArray();
 
-      const upcomingAppointments = await db.collection("Appointments")
-          .find({ email, status: "Scheduled" })
-          .sort({ date: 1 })
-          .limit(3)
-          .toArray();
+    const upcomingAppointments = await db.collection("Appointments")
+      .find({ email, status: "Scheduled" })
+      .sort({ date: 1 })
+      .limit(3)
+      .toArray();
 
-      const userRecord = await db.collection("MedicalRecords").findOne({ userEmail: email });
-      const medications = userRecord?.medications || [];
+    const userRecord = await db.collection("MedicalRecords").findOne({ userEmail: email });
+    const medications = userRecord?.medications || [];
+    
+    // Get heart rate logs
+    const heartRateLogs = userRecord?.heartRate || []; 
 
-      const missedMeds = medications.filter(med => med.logs.some(log => log.status === "Missed")).length;
-      const takenMeds = medications.filter(med => med.logs.some(log => log.status === "Taken")).length;
+    const missedMeds = medications.filter(med => med.logs.some(log => log.status === "Missed")).length;
+    const takenMeds = medications.filter(med => med.logs.some(log => log.status === "Taken")).length;
 
-      const medicationStats = {
-          dates: [],
-          taken: [],
-          missed: [],
-      };
+    const medicationStats = {
+      dates: [],
+      taken: [],
+      missed: [],
+    };
 
-      medications.forEach(med => {
-          med.logs.forEach(log => {
-              const date = log.time.split("T")[0];
+    medications.forEach(med => {
+      med.logs.forEach(log => {
+        const date = log.time.split("T")[0];
 
-              if (!medicationStats.dates.includes(date)) {
-                  medicationStats.dates.push(date);
-                  medicationStats.taken.push(0);
-                  medicationStats.missed.push(0);
-              }
+        if (!medicationStats.dates.includes(date)) {
+          medicationStats.dates.push(date);
+          medicationStats.taken.push(0);
+          medicationStats.missed.push(0);
+        }
 
-              const index = medicationStats.dates.indexOf(date);
-              if (log.status === "Taken") {
-                  medicationStats.taken[index]++;
-              } else if (log.status === "Missed") {
-                  medicationStats.missed[index]++;
-              }
-          });
+        const index = medicationStats.dates.indexOf(date);
+        if (log.status === "Taken") {
+          medicationStats.taken[index]++;
+        } else if (log.status === "Missed") {
+          medicationStats.missed[index]++;
+        }
       });
+    });
 
-      const healthAlerts = [];
-      if (missedMeds > 0) {
-          healthAlerts.push(`You missed ${missedMeds} medication(s) this week!`);
-      }
+    const healthAlerts = [];
+    if (missedMeds > 0) {
+      healthAlerts.push(`You missed ${missedMeds} medication(s) this week!`);
+    }
 
-      console.log("Returning Health Dashboard Data:", { recentAppointments, upcomingAppointments, medicationStats, healthAlerts });
+    console.log("Returning Health Dashboard Data:", { recentAppointments, upcomingAppointments, medicationStats, healthAlerts, heartRateLogs });
 
-      res.json({ recentAppointments, upcomingAppointments, medicationStats, healthAlerts });
+    res.json({ 
+      recentAppointments, 
+      upcomingAppointments, 
+      medicationStats, 
+      healthAlerts, 
+      heartRateLogs // ✅ Now includes logged heart rate data 
+    });
 
   } catch (error) {
-      console.error("Error fetching dashboard data:", error);
-      res.status(500).json({ message: "Server error" });
+    console.error("Error fetching dashboard data:", error);
+    res.status(500).json({ message: "Server error" });
   }
 });
-
 
 
 
