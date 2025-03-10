@@ -906,8 +906,11 @@ app.get("/get-health-dashboard", async (req, res) => {
     const userRecord = await db.collection("MedicalRecords").findOne({ userEmail: email });
     const medications = userRecord?.medications || [];
 
-    // Get heart rate logs
+    // ✅ Get heart rate logs
     const heartRateLogs = userRecord?.heartRate || [];
+
+    // ✅ Get step count logs
+    const stepCountLogs = userRecord?.stepCount || [];
 
     const missedMeds = medications.filter(med => med.logs.some(log => log.status === "Missed")).length;
     const takenMeds = medications.filter(med => med.logs.some(log => log.status === "Taken")).length;
@@ -942,14 +945,22 @@ app.get("/get-health-dashboard", async (req, res) => {
       healthAlerts.push(`You missed ${missedMeds} medication(s) this week!`);
     }
 
-    console.log("Returning Health Dashboard Data:", { recentAppointments, upcomingAppointments, medicationStats, healthAlerts, heartRateLogs });
+    console.log("Returning Health Dashboard Data:", { 
+      recentAppointments, 
+      upcomingAppointments, 
+      medicationStats, 
+      healthAlerts, 
+      heartRateLogs, // ✅ Heart rate logs included
+      stepCountLogs  // ✅ Step count logs included
+    });
 
     res.json({
       recentAppointments,
       upcomingAppointments,
       medicationStats,
       healthAlerts,
-      heartRateLogs // ✅ Now includes logged heart rate data 
+      heartRateLogs, // ✅ Send heart rate logs
+      stepCountLogs  // ✅ Send step count logs
     });
 
   } catch (error) {
@@ -957,6 +968,7 @@ app.get("/get-health-dashboard", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
+
 
 
 
