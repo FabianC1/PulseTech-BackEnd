@@ -305,12 +305,10 @@ app.post("/getUserProfile", async (req, res) => {
 
 let pythonProcess = null;
 
-// Function to start a new Python process (ensure it doesn't exit)
 function startPythonProcess() {
   if (pythonProcess) {
-    console.log("Killing old Python process before starting a new one.");
-    pythonProcess.kill('SIGTERM');
-    pythonProcess = null;
+    console.log("Python process already running.");
+    return;
   }
 
   pythonProcess = spawn("python", ["symptom_checker.py"], { stdio: ["pipe", "pipe", "pipe"] });
@@ -325,11 +323,12 @@ function startPythonProcess() {
 
   pythonProcess.on("close", (code) => {
     console.log(`Python process exited with code ${code}`);
-    pythonProcess = null; // Allow restarting if needed
+    pythonProcess = null; // Reset so it can restart
   });
 
   console.log("New Python process started and waiting for input.");
 }
+
 
 // Restart Python process on every website refresh
 app.get("/", (req, res) => {

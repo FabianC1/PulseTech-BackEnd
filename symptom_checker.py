@@ -103,7 +103,10 @@ def tree_to_code(tree, feature_names):
     
     # Ask the primary symptom only once
     while True:
-        disease_input = input("").lower().replace(" ", "_")
+        sys.stdout.flush()
+        disease_input = input().strip().lower().replace(" ", "_")
+        sys.stdout.flush()
+
         conf, cnf_dis = check_pattern(chk_dis, disease_input)
         
         if conf == 1:
@@ -134,6 +137,7 @@ def tree_to_code(tree, feature_names):
             break
         except:
             print("\nEnter number of days.")
+            sys.stdout.flush()
 
     def recurse(node, depth):
         if tree_.feature[node] != _tree.TREE_UNDEFINED:
@@ -221,6 +225,10 @@ def check_pattern(dis_list, inp):
         return 1, pred_list
     else:
         return ptr, item
+
+
+sys.stdout.flush()
+sys.stderr.flush()
 
 # Main function to run the symptom checker with user inputs from command line
 def main():
