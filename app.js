@@ -481,21 +481,30 @@ app.post("/save-medical-records", async (req, res) => {
 
 app.get("/get-medical-records", async (req, res) => {
   try {
-    const { email } = req.query; // Get email from query
+    const { email } = req.query;
 
-    // Ensure email is provided
     if (!email) {
       return res.status(400).json({ message: "Email is required" });
     }
 
-    // Find medical records using userEmail
     const medicalRecord = await db.collection("MedicalRecords").findOne({ userEmail: email });
 
-    if (medicalRecord) {
-      return res.status(200).json(medicalRecord);
-    } else {
+    if (!medicalRecord) {
       return res.status(404).json({ message: "No medical records found for this user" });
     }
+
+    // Extract the most recent value from each log array (or default to 0 if empty)
+    const getLatestValue = (logs) => (Array.isArray(logs) && logs.length > 0 ? logs[logs.length - 1].value : 0);
+
+    const formattedRecord = {
+      ...medicalRecord,
+      heartRate: getLatestValue(medicalRecord.heartRate),
+      stepCount: getLatestValue(medicalRecord.stepCount),
+      sleepTracking: getLatestValue(medicalRecord.sleepTracking),
+      bloodOxygen: getLatestValue(medicalRecord.bloodOxygen),
+    };
+
+    return res.status(200).json(formattedRecord);
   } catch (error) {
     console.error("Error fetching medical records:", error);
     return res.status(500).json({ message: "Internal server error" });
