@@ -312,7 +312,7 @@ function startPythonProcess() {
     pythonProcess.kill();  // Sends the default signal (SIGTERM)
     pythonProcess = null;
   }
-  
+
   console.log("Starting new Python process...");
   pythonProcess = spawn("python", ["symptom_checker.py"], { stdio: ["pipe", "pipe", "pipe"] });
 
@@ -387,7 +387,7 @@ app.post("/save-medical-records", async (req, res) => {
     labResults,
     doctorVisits,
     heartRate,
-    stepCount,
+    stepCount, // Add step count
     sleepTracking,
     bloodOxygen,
     organDonorStatus,
@@ -402,11 +402,18 @@ app.post("/save-medical-records", async (req, res) => {
     const existingRecord = await db.collection("MedicalRecords").findOne({ userEmail: email });
 
     if (existingRecord) {
-      // Ensure heartRate is an array before pushing new data
+      // Ensure heartRate and stepCount are arrays before appending
       const heartRateLogs = Array.isArray(existingRecord.heartRate) ? existingRecord.heartRate : [];
+      const stepCountLogs = Array.isArray(existingRecord.stepCount) ? existingRecord.stepCount : [];
 
+      // Append new heart rate log
       if (heartRate !== undefined) {
         heartRateLogs.push({ time: new Date().toISOString(), value: heartRate });
+      }
+
+      // Append new step count log
+      if (stepCount !== undefined) {
+        stepCountLogs.push({ time: new Date().toISOString(), value: stepCount });
       }
 
       await db.collection("MedicalRecords").updateOne(
@@ -429,7 +436,7 @@ app.post("/save-medical-records", async (req, res) => {
             labResults,
             doctorVisits,
             heartRate: heartRateLogs, // Append new heart rate logs
-            stepCount,
+            stepCount: stepCountLogs, // Append new step count logs
             sleepTracking,
             bloodOxygen,
             organDonorStatus,
@@ -440,7 +447,7 @@ app.post("/save-medical-records", async (req, res) => {
 
       return res.status(200).json({ message: "Medical records updated successfully" });
     } else {
-      // Create a new record with heartRate logs
+      // Create a new record with heart rate & step count logs
       await db.collection("MedicalRecords").insertOne({
         userEmail: email,
         fullName,
@@ -459,7 +466,7 @@ app.post("/save-medical-records", async (req, res) => {
         labResults,
         doctorVisits,
         heartRate: heartRate !== undefined ? [{ time: new Date().toISOString(), value: heartRate }] : [],
-        stepCount,
+        stepCount: stepCount !== undefined ? [{ time: new Date().toISOString(), value: stepCount }] : [],
         sleepTracking,
         bloodOxygen,
         organDonorStatus,
@@ -848,26 +855,26 @@ app.get("/get-messages", async (req, res) => {
 
 app.post("/send-message", async (req, res) => {
   try {
-      const { sender, receiver, message, attachment, timestamp } = req.body;
+    const { sender, receiver, message, attachment, timestamp } = req.body;
 
-      if (!sender || !receiver) {
-          return res.status(400).json({ message: "Sender and receiver are required." });
-      }
+    if (!sender || !receiver) {
+      return res.status(400).json({ message: "Sender and receiver are required." });
+    }
 
-      const messageData = {
-          sender,
-          receiver,
-          message: message || null,
-          attachment: attachment || null,
-          timestamp,
-      };
+    const messageData = {
+      sender,
+      receiver,
+      message: message || null,
+      attachment: attachment || null,
+      timestamp,
+    };
 
-      await db.collection("messages").insertOne(messageData);
+    await db.collection("messages").insertOne(messageData);
 
-      res.status(201).json({ message: "Message sent successfully!" });
+    res.status(201).json({ message: "Message sent successfully!" });
   } catch (error) {
-      console.error("Error sending message:", error);
-      res.status(500).json({ message: "Internal server error" });
+    console.error("Error sending message:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 });
 
@@ -898,9 +905,9 @@ app.get("/get-health-dashboard", async (req, res) => {
 
     const userRecord = await db.collection("MedicalRecords").findOne({ userEmail: email });
     const medications = userRecord?.medications || [];
-    
+
     // Get heart rate logs
-    const heartRateLogs = userRecord?.heartRate || []; 
+    const heartRateLogs = userRecord?.heartRate || [];
 
     const missedMeds = medications.filter(med => med.logs.some(log => log.status === "Missed")).length;
     const takenMeds = medications.filter(med => med.logs.some(log => log.status === "Taken")).length;
@@ -937,11 +944,11 @@ app.get("/get-health-dashboard", async (req, res) => {
 
     console.log("Returning Health Dashboard Data:", { recentAppointments, upcomingAppointments, medicationStats, healthAlerts, heartRateLogs });
 
-    res.json({ 
-      recentAppointments, 
-      upcomingAppointments, 
-      medicationStats, 
-      healthAlerts, 
+    res.json({
+      recentAppointments,
+      upcomingAppointments,
+      medicationStats,
+      healthAlerts,
       heartRateLogs // ✅ Now includes logged heart rate data 
     });
 
