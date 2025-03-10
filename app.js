@@ -858,64 +858,70 @@ app.post("/send-message", async (req, res) => {
 
 app.get("/get-health-dashboard", async (req, res) => {
   try {
-    const { email } = req.query;
-    const user = await db.collection("Users").findOne({ email });
+      const { email } = req.query;
+      console.log("Health Dashboard API Called for:", email); // Debugging
 
-    if (!user) return res.status(404).json({ message: "User not found" });
+      const user = await db.collection("Users").findOne({ email });
+      if (!user) {
+          console.log("User not found in database.");
+          return res.status(404).json({ message: "User not found" });
+      }
 
-    const recentAppointments = await db.collection("Appointments")
-      .find({ email })
-      .sort({ date: -1 })
-      .limit(5)
-      .toArray();
+      const recentAppointments = await db.collection("Appointments")
+          .find({ email, status: "Completed" })
+          .sort({ date: -1 })
+          .limit(3)
+          .toArray();
 
-    const upcomingAppointments = await db.collection("Appointments")
-      .find({ email, date: { $gte: new Date() } })
-      .sort({ date: 1 })
-      .limit(5)
-      .toArray();
+      const upcomingAppointments = await db.collection("Appointments")
+          .find({ email, status: "Scheduled" })
+          .sort({ date: 1 })
+          .limit(3)
+          .toArray();
 
-    const medications = user.medications || [];
+      const userRecord = await db.collection("MedicalRecords").findOne({ userEmail: email });
+      const medications = userRecord?.medications || [];
 
-    const missedMeds = medications.filter(med => med.logs.some(log => log.status === "Missed")).length;
-    const takenMeds = medications.filter(med => med.logs.some(log => log.status === "Taken")).length;
+      const missedMeds = medications.filter(med => med.logs.some(log => log.status === "Missed")).length;
+      const takenMeds = medications.filter(med => med.logs.some(log => log.status === "Taken")).length;
 
-    // 🔹 Ensure `medicationStats` exists to avoid frontend crashes
-    const medicationStats = {
-      dates: [], // 🔥 Default empty array to prevent `slice()` error
-      taken: [],
-      missed: [],
-    };
+      const medicationStats = {
+          dates: [],
+          taken: [],
+          missed: [],
+      };
 
-    medications.forEach(med => {
-      med.logs.forEach(log => {
-        const date = log.time.split("T")[0]; // Extract date part only
+      medications.forEach(med => {
+          med.logs.forEach(log => {
+              const date = log.time.split("T")[0];
 
-        if (!medicationStats.dates.includes(date)) {
-          medicationStats.dates.push(date);
-          medicationStats.taken.push(0);
-          medicationStats.missed.push(0);
-        }
+              if (!medicationStats.dates.includes(date)) {
+                  medicationStats.dates.push(date);
+                  medicationStats.taken.push(0);
+                  medicationStats.missed.push(0);
+              }
 
-        const index = medicationStats.dates.indexOf(date);
-        if (log.status === "Taken") {
-          medicationStats.taken[index]++;
-        } else if (log.status === "Missed") {
-          medicationStats.missed[index]++;
-        }
+              const index = medicationStats.dates.indexOf(date);
+              if (log.status === "Taken") {
+                  medicationStats.taken[index]++;
+              } else if (log.status === "Missed") {
+                  medicationStats.missed[index]++;
+              }
+          });
       });
-    });
 
-    res.json({
-      missedMeds,
-      recentAppointments,
-      upcomingAppointments,
-      medicationStats, // 🔥 Always ensure it's present
-    });
+      const healthAlerts = [];
+      if (missedMeds > 0) {
+          healthAlerts.push(`You missed ${missedMeds} medication(s) this week!`);
+      }
+
+      console.log("Returning Health Dashboard Data:", { recentAppointments, upcomingAppointments, medicationStats, healthAlerts });
+
+      res.json({ recentAppointments, upcomingAppointments, medicationStats, healthAlerts });
 
   } catch (error) {
-    console.error("Error fetching dashboard data:", error);
-    res.status(500).json({ message: "Server error" });
+      console.error("Error fetching dashboard data:", error);
+      res.status(500).json({ message: "Server error" });
   }
 });
 
