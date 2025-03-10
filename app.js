@@ -954,7 +954,6 @@ app.get("/get-health-dashboard", async (req, res) => {
 
 
 
-
 // Serve index.html for root URL
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "../PulseTech-FrontEnd", "index.html"));
