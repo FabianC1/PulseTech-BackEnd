@@ -110,26 +110,38 @@ def tree_to_code(tree, feature_names):
         conf, cnf_dis = check_pattern(chk_dis, disease_input)
         
         if conf == 1:
-            print("\nSearches related to input: ")
+            print("\nSearches related to input:")
             sys.stdout.flush()
-            for num, it in enumerate(cnf_dis):
-                print(str(num + 1) + ")", it.replace("_", " "))
-            conf_inp = 0
-            while conf_inp <= 0 or conf_inp > num + 1:
-                if num != 0:
-                    try:
-                        print(f"Select the one you meant (1 to {num+1}):  ", end="")
-                        conf_inp = int(input(""))
-                    except:
-                        print(f"Select the one you meant (1 to {num+1}):  ", end="")
-                        conf_inp = int(input(""))
+            
+            # Ensure there are matching symptoms
+            if not cnf_dis:
+                print("No matching symptoms found. Please enter another symptom.")
+                sys.stdout.flush()
+                continue  # Ask for another symptom
+
+            for i, item in enumerate(cnf_dis, start=1):
+                print(f"{i}) {item.replace('_', ' ')}")
+            sys.stdout.flush()
+            
+            conf_inp = None
+            while conf_inp is None:
+                print(f"Select the one you meant (1 to {len(cnf_dis)}):  ", end="")
+                sys.stdout.flush()
+                user_selection = input("").strip()
+                if user_selection.isdigit():
+                    conf_inp = int(user_selection)
+                    if not (1 <= conf_inp <= len(cnf_dis)):
+                        print("\nInvalid choice. Please enter a number from the list.")
+                        sys.stdout.flush()
+                        conf_inp = None  # reset input
                 else:
-                    conf_inp = 0
-                    break
+                    print("\nInvalid input. Please enter a valid number.")
+                    sys.stdout.flush()
             disease_input = cnf_dis[conf_inp - 1]
             break
         else:
             print("\nI'm sorry. It's not registered in our database. Enter another symptom.")
+            sys.stdout.flush()
 
     while True:
         try:

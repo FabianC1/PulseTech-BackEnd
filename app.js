@@ -306,11 +306,14 @@ app.post("/getUserProfile", async (req, res) => {
 let pythonProcess = null;
 
 function startPythonProcess() {
+  // If an existing process is running, kill it first.
   if (pythonProcess) {
-    console.log("Python process already running.");
-    return;
+    console.log("Terminating existing Python process...");
+    pythonProcess.kill();  // Sends the default signal (SIGTERM)
+    pythonProcess = null;
   }
-
+  
+  console.log("Starting new Python process...");
   pythonProcess = spawn("python", ["symptom_checker.py"], { stdio: ["pipe", "pipe", "pipe"] });
 
   pythonProcess.stdout.on("data", (data) => {
@@ -323,17 +326,16 @@ function startPythonProcess() {
 
   pythonProcess.on("close", (code) => {
     console.log(`Python process exited with code ${code}`);
-    pythonProcess = null; // Reset so it can restart
+    pythonProcess = null; // Allow restart
   });
 
   console.log("New Python process started and waiting for input.");
 }
 
-
 // Restart Python process on every website refresh
 app.get("/", (req, res) => {
   console.log(`Page refresh detected: ${req.url}`);
-  startPythonProcess();  // Restart AI every refresh
+  startPythonProcess();  // This will kill any existing process and start a new one.
   res.sendFile(path.join(__dirname, "../PulseTech-FrontEnd", "index.html"));
 });
 
