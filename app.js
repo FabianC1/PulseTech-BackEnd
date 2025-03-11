@@ -920,14 +920,38 @@ app.get("/get-health-dashboard", async (req, res) => {
     const userRecord = await db.collection("MedicalRecords").findOne({ userEmail: email });
     const medications = userRecord?.medications || [];
 
-    // Get heart rate logs
-    const heartRateLogs = userRecord?.heartRate || [];
+    // Fetch only the 20 most recent heart rate logs
+    const heartRateLogs = await db.collection("MedicalRecords")
+      .aggregate([
+        { $match: { userEmail: email } },
+        { $unwind: "$heartRate" },
+        { $sort: { "heartRate.time": -1 } },
+        { $limit: 20 },
+        { $group: { _id: "$userEmail", heartRate: { $push: "$heartRate" } } }
+      ])
+      .toArray();
+    
+    // Fetch only the 20 most recent step count logs
+    const stepCountLogs = await db.collection("MedicalRecords")
+      .aggregate([
+        { $match: { userEmail: email } },
+        { $unwind: "$stepCount" },
+        { $sort: { "stepCount.time": -1 } },
+        { $limit: 20 },
+        { $group: { _id: "$userEmail", stepCount: { $push: "$stepCount" } } }
+      ])
+      .toArray();
 
-    // Get step count logs
-    const stepCountLogs = userRecord?.stepCount || [];
-
-    // Get sleep tracking logs
-    const sleepTrackingLogs = userRecord?.sleepTracking || [];
+    // Fetch only the 20 most recent sleep tracking logs
+    const sleepTrackingLogs = await db.collection("MedicalRecords")
+      .aggregate([
+        { $match: { userEmail: email } },
+        { $unwind: "$sleepTracking" },
+        { $sort: { "sleepTracking.time": -1 } },
+        { $limit: 20 },
+        { $group: { _id: "$userEmail", sleepTracking: { $push: "$sleepTracking" } } }
+      ])
+      .toArray();
 
     const missedMeds = medications.filter(med => med.logs.some(log => log.status === "Missed")).length;
     const takenMeds = medications.filter(med => med.logs.some(log => log.status === "Taken")).length;
@@ -967,9 +991,9 @@ app.get("/get-health-dashboard", async (req, res) => {
       upcomingAppointments,
       medicationStats,
       healthAlerts,
-      heartRateLogs, // Heart rate logs included
-      stepCountLogs, // Step count logs included
-      sleepTrackingLogs // Sleep tracking logs included
+      heartRateLogs: heartRateLogs.length > 0 ? heartRateLogs[0].heartRate : [],
+      stepCountLogs: stepCountLogs.length > 0 ? stepCountLogs[0].stepCount : [],
+      sleepTrackingLogs: sleepTrackingLogs.length > 0 ? sleepTrackingLogs[0].sleepTracking : []
     });
 
     res.json({
@@ -977,9 +1001,9 @@ app.get("/get-health-dashboard", async (req, res) => {
       upcomingAppointments,
       medicationStats,
       healthAlerts,
-      heartRateLogs, // Send heart rate logs
-      stepCountLogs, // Send step count logs
-      sleepTrackingLogs // Send sleep tracking logs
+      heartRateLogs: heartRateLogs.length > 0 ? heartRateLogs[0].heartRate : [],
+      stepCountLogs: stepCountLogs.length > 0 ? stepCountLogs[0].stepCount : [],
+      sleepTrackingLogs: sleepTrackingLogs.length > 0 ? sleepTrackingLogs[0].sleepTracking : []
     });
 
   } catch (error) {
@@ -987,6 +1011,7 @@ app.get("/get-health-dashboard", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
+
 
 
 
