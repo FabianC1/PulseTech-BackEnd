@@ -1002,6 +1002,49 @@ app.get("/get-health-dashboard", async (req, res) => {
 
 
 
+app.post("/add-health-data", async (req, res) => {
+  try {
+    const { email, type, date, value } = req.body;
+
+    if (!email || !type || !date || value === undefined) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    const validTypes = ["heartRate", "stepCount", "sleepTracking", "medicalLogs"];
+    if (!validTypes.includes(type)) {
+      return res.status(400).json({ message: "Invalid data type" });
+    }
+
+    const userRecord = await db.collection("MedicalRecords").findOne({ userEmail: email });
+
+    if (!userRecord) {
+      return res.status(404).json({ message: "User record not found" });
+    }
+
+    // Convert date to ISO format (ensuring it's a valid date)
+    const formattedDate = new Date(date);
+    if (isNaN(formattedDate.getTime())) {
+      return res.status(400).json({ message: "Invalid date format. Use YYYY-MM-DD." });
+    }
+
+    // Prepare new log entry
+    const newEntry = { time: formattedDate.toISOString(), value };
+
+    // Update the correct field dynamically
+    const updateField = {};
+    updateField[type] = [...(userRecord[type] || []), newEntry]; // Append new data
+
+    await db.collection("MedicalRecords").updateOne(
+      { userEmail: email },
+      { $set: updateField }
+    );
+
+    res.json({ message: `${type} data added successfully!`, newEntry });
+  } catch (error) {
+    console.error("Error adding health data:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
 
 
 
