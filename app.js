@@ -905,28 +905,64 @@ app.get("/get-health-dashboard", async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    const recentAppointments = await db.collection("Appointments")
-      .find({ email, status: "Completed" })
+    // Check if user is a doctor or patient
+    const isDoctor = user.role === "doctor";
+
+    // Fetch the last 3 completed appointments
+    let recentAppointments = await db.collection("Appointments")
+      .find({ 
+        $or: [{ patientEmail: email }, { doctorEmail: email }], 
+        status: "Completed" 
+      })
       .sort({ date: -1 })
       .limit(3)
       .toArray();
 
-    const upcomingAppointments = await db.collection("Appointments")
-      .find({ email, status: "Scheduled" })
+    // Fetch the next 3 upcoming scheduled appointments
+    let upcomingAppointments = await db.collection("Appointments")
+      .find({ 
+        $or: [{ patientEmail: email }, { doctorEmail: email }], 
+        status: "Scheduled" 
+      })
       .sort({ date: 1 })
       .limit(3)
       .toArray();
 
-    // Fetch latest medical records but limit logs
+    // Extract all unique doctor emails
+    const doctorEmails = [...new Set([...recentAppointments, ...upcomingAppointments].map(appt => appt.doctorEmail))];
+
+    // Fetch doctor names from the Users collection
+    const doctors = await db.collection("Users")
+      .find({ email: { $in: doctorEmails } })
+      .toArray();
+
+    // Create a map { doctorEmail: doctorFullName }
+    const doctorMap = {};
+    doctors.forEach(doc => {
+      doctorMap[doc.email] = doc.fullName || "Unknown Doctor";
+    });
+
+    // Attach doctor names to appointments
+    recentAppointments = recentAppointments.map(appt => ({
+      ...appt,
+      doctor: doctorMap[appt.doctorEmail] || "Unknown Doctor"
+    }));
+
+    upcomingAppointments = upcomingAppointments.map(appt => ({
+      ...appt,
+      doctor: doctorMap[appt.doctorEmail] || "Unknown Doctor"
+    }));
+
+    // Fetch latest medical records
     const userRecord = await db.collection("MedicalRecords").findOne(
       { userEmail: email },
       {
         projection: {
-          heartRate: { $slice: -20 }, // Last 20 heart rate logs
-          stepCount: { $slice: -20 }, // Last 20 step count logs
-          sleepTracking: { $slice: -20 }, // Last 20 sleep tracking logs
-          medicalLogs: { $slice: -7 }, // Last 7 days of medical logs
-          medications: 1 // Keep medications data unchanged
+          heartRate: { $slice: -20 }, 
+          stepCount: { $slice: -20 }, 
+          sleepTracking: { $slice: -20 }, 
+          medicalLogs: { $slice: -7 }, 
+          medications: 1 
         }
       }
     );
@@ -935,7 +971,7 @@ app.get("/get-health-dashboard", async (req, res) => {
     const heartRateLogs = userRecord?.heartRate ?? [];
     const stepCountLogs = userRecord?.stepCount ?? [];
     const sleepTrackingLogs = userRecord?.sleepTracking ?? [];
-    const medicalLogs = userRecord?.medicalLogs ?? []; // Last 7 days only
+    const medicalLogs = userRecord?.medicalLogs ?? []; 
 
     // Medication Statistics
     const medicationStats = {
@@ -971,13 +1007,13 @@ app.get("/get-health-dashboard", async (req, res) => {
       const nextDoseTime = med.nextDose ? new Date(med.nextDose) : null;
       if (!nextDoseTime) return false;
       const diffMinutes = Math.floor((nextDoseTime - new Date()) / 60000);
-      return diffMinutes > 0 && diffMinutes <= 60; // Due within 1 hour
+      return diffMinutes > 0 && diffMinutes <= 60; 
     });
     if (nextDoseSoon) {
       healthAlerts.push("You have a medication dose due soon.");
     }
 
-    // 2️⃣ Overdue Medication Alert (Missed & Not Taken)
+    // 2️⃣ Overdue Medication Alert
     const overdueMedications = medications.filter(med => 
       med.logs.some(log => log.status === "Missed" && !log.markedAsTaken)
     ).length;
@@ -985,7 +1021,7 @@ app.get("/get-health-dashboard", async (req, res) => {
       healthAlerts.push(`You have ${overdueMedications} overdue medication(s) that need attention.`);
     }
 
-    // 3️⃣ Critical Medication Warning (3+ Missed Doses of Same Medication)
+    // 3️⃣ Critical Medication Warning
     const criticalMissedMeds = medications.filter(med => 
       med.logs.filter(log => log.status === "Missed").length >= 3
     ).length;
@@ -993,7 +1029,7 @@ app.get("/get-health-dashboard", async (req, res) => {
       healthAlerts.push("Warning: You have missed 3+ doses of a critical medication. Please consult your doctor.");
     }
 
-    // 4️⃣ Doctor Contact Suggestion (5+ Missed Medications in Total)
+    // 4️⃣ Doctor Contact Suggestion
     if (totalMissed >= 5) {
       healthAlerts.push(`You have missed ${totalMissed} medications! Please contact your doctor immediately. <a href='/messages'>Message a doctor</a>`);
     }
@@ -1025,6 +1061,7 @@ app.get("/get-health-dashboard", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
+
 
 
 
