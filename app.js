@@ -896,7 +896,7 @@ app.post("/send-message", async (req, res) => {
 
 app.get("/get-health-dashboard", async (req, res) => {
   try {
-    const { email } = req.query;
+    const { email, lastUpdated } = req.query;
     console.log("Health Dashboard API Called for:", email);
 
     const user = await db.collection("Users").findOne({ email });
@@ -905,44 +905,51 @@ app.get("/get-health-dashboard", async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Check if user is a doctor or patient
-    const isDoctor = user.role === "doctor";
+    // 🔹 Fetch the latest modification timestamp from Appointments, Medications, and Logs
+    const latestAppointment = await db.collection("Appointments").findOne(
+      { $or: [{ patientEmail: email }, { doctorEmail: email }] },
+      { sort: { updatedAt: -1 }, projection: { updatedAt: 1 } }
+    );
 
-    // Fetch the last 3 completed appointments
+    const latestMedicalRecord = await db.collection("MedicalRecords").findOne(
+      { userEmail: email },
+      { sort: { updatedAt: -1 }, projection: { updatedAt: 1 } }
+    );
+
+    const latestUpdateTime = [latestAppointment?.updatedAt, latestMedicalRecord?.updatedAt]
+      .filter(Boolean)  // Remove null values
+      .map(date => new Date(date))  // Convert to Date objects
+      .sort((a, b) => b - a)[0]; // Get the most recent timestamp
+
+    const latestUpdateISO = latestUpdateTime ? latestUpdateTime.toISOString() : "";
+
+    // 🔹 If lastUpdated is provided and no changes were made since, return "No Updates"
+    if (lastUpdated && latestUpdateISO && new Date(lastUpdated) >= latestUpdateTime) {
+      return res.json({ message: "No Updates" });
+    }
+
+    // 🔹 Fetch Recent & Upcoming Appointments
     let recentAppointments = await db.collection("Appointments")
-      .find({ 
-        $or: [{ patientEmail: email }, { doctorEmail: email }], 
-        status: "Completed" 
-      })
+      .find({ $or: [{ patientEmail: email }, { doctorEmail: email }], status: "Completed" })
       .sort({ date: -1 })
       .limit(3)
       .toArray();
 
-    // Fetch the next 3 upcoming scheduled appointments
     let upcomingAppointments = await db.collection("Appointments")
-      .find({ 
-        $or: [{ patientEmail: email }, { doctorEmail: email }], 
-        status: "Scheduled" 
-      })
+      .find({ $or: [{ patientEmail: email }, { doctorEmail: email }], status: "Scheduled" })
       .sort({ date: 1 })
       .limit(3)
       .toArray();
 
-    // Extract all unique doctor emails
+    // 🔹 Fetch Doctor Names
     const doctorEmails = [...new Set([...recentAppointments, ...upcomingAppointments].map(appt => appt.doctorEmail))];
-
-    // Fetch doctor names from the Users collection
-    const doctors = await db.collection("Users")
-      .find({ email: { $in: doctorEmails } })
-      .toArray();
-
-    // Create a map { doctorEmail: doctorFullName }
+    const doctors = await db.collection("Users").find({ email: { $in: doctorEmails } }).toArray();
     const doctorMap = {};
     doctors.forEach(doc => {
-      doctorMap[doc.email] = doc.fullName || "Unknown Doctor";
+      doctorMap[doc.email] = doc.fullName ? `Dr. ${doc.fullName}` : "Unknown Doctor";
     });
 
-    // Attach doctor names to appointments
+    // 🔹 Attach Doctor Names to Appointments
     recentAppointments = recentAppointments.map(appt => ({
       ...appt,
       doctor: doctorMap[appt.doctorEmail] || "Unknown Doctor"
@@ -953,16 +960,16 @@ app.get("/get-health-dashboard", async (req, res) => {
       doctor: doctorMap[appt.doctorEmail] || "Unknown Doctor"
     }));
 
-    // Fetch latest medical records
+    // 🔹 Fetch Medical Records
     const userRecord = await db.collection("MedicalRecords").findOne(
       { userEmail: email },
       {
         projection: {
-          heartRate: { $slice: -20 }, 
-          stepCount: { $slice: -20 }, 
-          sleepTracking: { $slice: -20 }, 
-          medicalLogs: { $slice: -7 }, 
-          medications: 1 
+          heartRate: { $slice: -20 },
+          stepCount: { $slice: -20 },
+          sleepTracking: { $slice: -20 },
+          medicalLogs: { $slice: -7 },
+          medications: 1
         }
       }
     );
@@ -971,25 +978,18 @@ app.get("/get-health-dashboard", async (req, res) => {
     const heartRateLogs = userRecord?.heartRate ?? [];
     const stepCountLogs = userRecord?.stepCount ?? [];
     const sleepTrackingLogs = userRecord?.sleepTracking ?? [];
-    const medicalLogs = userRecord?.medicalLogs ?? []; 
+    const medicalLogs = userRecord?.medicalLogs ?? [];
 
-    // Medication Statistics
-    const medicationStats = {
-      dates: [],
-      taken: [],
-      missed: [],
-    };
-
+    // 🔹 Compute Medication Statistics
+    const medicationStats = { dates: [], taken: [], missed: [] };
     medications.forEach(med => {
       med.logs.forEach(log => {
         const date = log.time.split("T")[0];
-
         if (!medicationStats.dates.includes(date)) {
           medicationStats.dates.push(date);
           medicationStats.taken.push(0);
           medicationStats.missed.push(0);
         }
-
         const index = medicationStats.dates.indexOf(date);
         if (log.status === "Taken") {
           medicationStats.taken[index]++;
@@ -999,6 +999,7 @@ app.get("/get-health-dashboard", async (req, res) => {
       });
     });
 
+    // 🔹 Generate Health Alerts
     const totalMissed = medicationStats.missed.reduce((sum, count) => sum + count, 0);
     const healthAlerts = [];
 
@@ -1007,44 +1008,28 @@ app.get("/get-health-dashboard", async (req, res) => {
       const nextDoseTime = med.nextDose ? new Date(med.nextDose) : null;
       if (!nextDoseTime) return false;
       const diffMinutes = Math.floor((nextDoseTime - new Date()) / 60000);
-      return diffMinutes > 0 && diffMinutes <= 60; 
+      return diffMinutes > 0 && diffMinutes <= 60;
     });
-    if (nextDoseSoon) {
-      healthAlerts.push("You have a medication dose due soon.");
-    }
+    if (nextDoseSoon) healthAlerts.push("You have a medication dose due soon.");
 
     // 2️⃣ Overdue Medication Alert
-    const overdueMedications = medications.filter(med => 
+    const overdueMedications = medications.filter(med =>
       med.logs.some(log => log.status === "Missed" && !log.markedAsTaken)
     ).length;
-    if (overdueMedications > 0) {
-      healthAlerts.push(`You have ${overdueMedications} overdue medication(s) that need attention.`);
-    }
+    if (overdueMedications > 0) healthAlerts.push(`You have ${overdueMedications} overdue medication(s).`);
 
     // 3️⃣ Critical Medication Warning
-    const criticalMissedMeds = medications.filter(med => 
+    const criticalMissedMeds = medications.filter(med =>
       med.logs.filter(log => log.status === "Missed").length >= 3
     ).length;
-    if (criticalMissedMeds > 0) {
-      healthAlerts.push("Warning: You have missed 3+ doses of a critical medication. Please consult your doctor.");
-    }
+    if (criticalMissedMeds > 0) healthAlerts.push("Warning: You have missed 3+ doses of a critical medication.");
 
     // 4️⃣ Doctor Contact Suggestion
     if (totalMissed >= 5) {
-      healthAlerts.push(`You have missed ${totalMissed} medications! Please contact your doctor immediately. <a href='/messages'>Message a doctor</a>`);
+      healthAlerts.push(`You have missed ${totalMissed} medications! Please contact your doctor.`);
     }
 
-    console.log("Returning Health Dashboard Data:", {
-      recentAppointments,
-      upcomingAppointments,
-      medicationStats,
-      healthAlerts,
-      heartRateLogs,
-      stepCountLogs,
-      sleepTrackingLogs,
-      medicalLogs
-    });
-
+    // 🔹 Return Updated Data
     res.json({
       recentAppointments,
       upcomingAppointments,
@@ -1053,8 +1038,11 @@ app.get("/get-health-dashboard", async (req, res) => {
       heartRateLogs,
       stepCountLogs,
       sleepTrackingLogs,
-      medicalLogs
+      medicalLogs,
+      lastUpdated: latestUpdateISO // Send latest update timestamp
     });
+
+    console.log("Returned updated Health Dashboard data.");
 
   } catch (error) {
     console.error("Error fetching dashboard data:", error);
