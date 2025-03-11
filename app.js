@@ -905,9 +905,7 @@ app.get("/get-health-dashboard", async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    const isDoctor = user.role === "doctor";
-
-    // 🔹 Fetch the latest modification timestamp
+    // 🔹 Fetch the latest modification timestamp from Appointments, Medications, and Logs
     const latestAppointment = await db.collection("Appointments").findOne(
       { $or: [{ patientEmail: email }, { doctorEmail: email }] },
       { sort: { updatedAt: -1 }, projection: { updatedAt: 1 } }
@@ -919,9 +917,9 @@ app.get("/get-health-dashboard", async (req, res) => {
     );
 
     const latestUpdateTime = [latestAppointment?.updatedAt, latestMedicalRecord?.updatedAt]
-      .filter(Boolean)
-      .map(date => new Date(date))
-      .sort((a, b) => b - a)[0];
+      .filter(Boolean)  // Remove null values
+      .map(date => new Date(date))  // Convert to Date objects
+      .sort((a, b) => b - a)[0]; // Get the most recent timestamp
 
     const latestUpdateISO = latestUpdateTime ? latestUpdateTime.toISOString() : "";
 
@@ -943,33 +941,23 @@ app.get("/get-health-dashboard", async (req, res) => {
       .limit(3)
       .toArray();
 
-    // 🔹 Fetch Doctor and Patient Names
-    const patientEmails = [...new Set([...recentAppointments, ...upcomingAppointments].map(appt => appt.patientEmail))];
+    // 🔹 Fetch Doctor Names
     const doctorEmails = [...new Set([...recentAppointments, ...upcomingAppointments].map(appt => appt.doctorEmail))];
-
-    const patients = await db.collection("Users").find({ email: { $in: patientEmails } }).toArray();
     const doctors = await db.collection("Users").find({ email: { $in: doctorEmails } }).toArray();
-
-    const patientMap = {};
     const doctorMap = {};
-
-    patients.forEach(pat => {
-      patientMap[pat.email] = pat.fullName || "Unknown Patient";
-    });
-
     doctors.forEach(doc => {
       doctorMap[doc.email] = doc.fullName ? `Dr. ${doc.fullName}` : "Unknown Doctor";
     });
 
-    // 🔹 Attach Correct Names to Appointments
+    // 🔹 Attach Doctor Names to Appointments
     recentAppointments = recentAppointments.map(appt => ({
       ...appt,
-      name: isDoctor ? (patientMap[appt.patientEmail] || "Unknown Patient") : (doctorMap[appt.doctorEmail] || "Unknown Doctor")
+      doctor: doctorMap[appt.doctorEmail] || "Unknown Doctor"
     }));
 
     upcomingAppointments = upcomingAppointments.map(appt => ({
       ...appt,
-      name: isDoctor ? (patientMap[appt.patientEmail] || "Unknown Patient") : (doctorMap[appt.doctorEmail] || "Unknown Doctor")
+      doctor: doctorMap[appt.doctorEmail] || "Unknown Doctor"
     }));
 
     // 🔹 Fetch Medical Records
@@ -1051,7 +1039,7 @@ app.get("/get-health-dashboard", async (req, res) => {
       stepCountLogs,
       sleepTrackingLogs,
       medicalLogs,
-      lastUpdated: latestUpdateISO
+      lastUpdated: latestUpdateISO // Send latest update timestamp
     });
 
     console.log("Returned updated Health Dashboard data.");
