@@ -949,16 +949,27 @@ app.get("/get-health-dashboard", async (req, res) => {
       doctorMap[doc.email] = doc.fullName ? `Dr. ${doc.fullName}` : "Unknown Doctor";
     });
 
-    // 🔹 Attach Doctor Names to Appointments
+    // 🔹 Fetch Patient Names
+    const patientEmails = [...new Set([...recentAppointments, ...upcomingAppointments].map(appt => appt.patientEmail))];
+    const patients = await db.collection("Users").find({ email: { $in: patientEmails } }).toArray();
+    const patientMap = {};
+    patients.forEach(pat => {
+      patientMap[pat.email] = pat.fullName || "Unknown Patient";
+    });
+
+    // 🔹 Attach Doctor and Patient Names to Appointments
     recentAppointments = recentAppointments.map(appt => ({
       ...appt,
-      doctor: doctorMap[appt.doctorEmail] || "Unknown Doctor"
+      doctorName: doctorMap[appt.doctorEmail] || "Unknown Doctor",
+      patientName: patientMap[appt.patientEmail] || "Unknown Patient"
     }));
 
     upcomingAppointments = upcomingAppointments.map(appt => ({
       ...appt,
-      doctor: doctorMap[appt.doctorEmail] || "Unknown Doctor"
+      doctorName: doctorMap[appt.doctorEmail] || "Unknown Doctor",
+      patientName: patientMap[appt.patientEmail] || "Unknown Patient"
     }));
+
 
     // 🔹 Fetch Medical Records
     const userRecord = await db.collection("MedicalRecords").findOne(
