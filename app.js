@@ -965,10 +965,12 @@ app.get("/get-health-dashboard", async (req, res) => {
       });
     });
 
+    const totalMissed = medicationStats.missed.reduce((sum, count) => sum + count, 0);
     const healthAlerts = [];
-    if (missedMeds > 0) {
-      healthAlerts.push(`You missed ${missedMeds} medication(s) this week!`);
+    if (totalMissed > 0) {
+      healthAlerts.push(`You missed ${totalMissed} medication(s) this week!`);
     }
+
 
     console.log("Returning Health Dashboard Data:", {
       recentAppointments,
