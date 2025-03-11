@@ -917,7 +917,7 @@ app.get("/get-health-dashboard", async (req, res) => {
       .limit(3)
       .toArray();
 
-    // Fetch the latest medical records but limit logs to the last 20 entries
+    // Fetch latest medical records but limit logs to last 7 days
     const userRecord = await db.collection("MedicalRecords").findOne(
       { userEmail: email },
       {
@@ -925,6 +925,7 @@ app.get("/get-health-dashboard", async (req, res) => {
           heartRate: { $slice: -20 }, // Get the last 20 heart rate logs
           stepCount: { $slice: -20 }, // Get the last 20 step count logs
           sleepTracking: { $slice: -20 }, // Get the last 20 sleep tracking logs
+          medicalLogs: { $slice: -7 }, // Get the last 7 medical logs (7 days)
           medications: 1 // Keep medications data unchanged
         }
       }
@@ -934,6 +935,7 @@ app.get("/get-health-dashboard", async (req, res) => {
     const heartRateLogs = userRecord?.heartRate ?? [];
     const stepCountLogs = userRecord?.stepCount ?? [];
     const sleepTrackingLogs = userRecord?.sleepTracking ?? [];
+    const medicalLogs = userRecord?.medicalLogs ?? []; // Last 7 days only
 
     const missedMeds = medications.filter(med => med.logs.some(log => log.status === "Missed")).length;
     const takenMeds = medications.filter(med => med.logs.some(log => log.status === "Taken")).length;
@@ -975,7 +977,8 @@ app.get("/get-health-dashboard", async (req, res) => {
       healthAlerts,
       heartRateLogs,
       stepCountLogs,
-      sleepTrackingLogs
+      sleepTrackingLogs,
+      medicalLogs
     });
 
     res.json({
@@ -985,7 +988,8 @@ app.get("/get-health-dashboard", async (req, res) => {
       healthAlerts,
       heartRateLogs,
       stepCountLogs,
-      sleepTrackingLogs
+      sleepTrackingLogs,
+      medicalLogs
     });
 
   } catch (error) {
@@ -993,6 +997,7 @@ app.get("/get-health-dashboard", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
+
 
 
 
