@@ -406,6 +406,7 @@ app.post("/save-medical-records", async (req, res) => {
       const heartRateLogs = Array.isArray(existingRecord.heartRate) ? existingRecord.heartRate : [];
       const stepCountLogs = Array.isArray(existingRecord.stepCount) ? existingRecord.stepCount : [];
       const sleepTrackingLogs = Array.isArray(existingRecord.sleepTracking) ? existingRecord.sleepTracking : []; // Ensure Sleep Tracking array exists
+      const bloodOxygenLogs = Array.isArray(existingRecord.bloodOxygen) ? existingRecord.bloodOxygen : [];
 
       // Append new Heart Rate log
       if (heartRate !== undefined) {
@@ -420,6 +421,11 @@ app.post("/save-medical-records", async (req, res) => {
       // Append new Sleep Tracking log
       if (sleepTracking !== undefined) {
         sleepTrackingLogs.push({ time: new Date().toISOString(), value: sleepTracking });
+      }
+
+      // Append new Blood Oxygen log
+      if (bloodOxygen !== undefined) {
+        bloodOxygenLogs.push({ time: new Date().toISOString(), value: bloodOxygen });
       }
 
       await db.collection("MedicalRecords").updateOne(
@@ -444,7 +450,7 @@ app.post("/save-medical-records", async (req, res) => {
             heartRate: heartRateLogs,
             stepCount: stepCountLogs,
             sleepTracking: sleepTrackingLogs, // Append new Sleep Tracking logs
-            bloodOxygen,
+            bloodOxygen: bloodOxygenLogs, // Append blood oxygen logs
             organDonorStatus,
             medicalDirectives,
           },
@@ -474,6 +480,7 @@ app.post("/save-medical-records", async (req, res) => {
         heartRate: heartRate !== undefined ? [{ time: new Date().toISOString(), value: heartRate }] : [],
         stepCount: stepCount !== undefined ? [{ time: new Date().toISOString(), value: stepCount }] : [],
         sleepTracking: sleepTracking !== undefined ? [{ time: new Date().toISOString(), value: sleepTracking }] : [], // Store Sleep Tracking as an array
+        bloodOxygen: bloodOxygen !== undefined ? [{ time: new Date().toISOString(), value: bloodOxygen }] : [], // Blood oxygen tracking initialized
         bloodOxygen,
         organDonorStatus,
         medicalDirectives,
