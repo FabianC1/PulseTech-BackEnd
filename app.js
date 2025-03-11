@@ -917,41 +917,23 @@ app.get("/get-health-dashboard", async (req, res) => {
       .limit(3)
       .toArray();
 
-    const userRecord = await db.collection("MedicalRecords").findOne({ userEmail: email });
+    // Fetch the latest medical records but limit logs to the last 20 entries
+    const userRecord = await db.collection("MedicalRecords").findOne(
+      { userEmail: email },
+      {
+        projection: {
+          heartRate: { $slice: -20 }, // Get the last 20 heart rate logs
+          stepCount: { $slice: -20 }, // Get the last 20 step count logs
+          sleepTracking: { $slice: -20 }, // Get the last 20 sleep tracking logs
+          medications: 1 // Keep medications data unchanged
+        }
+      }
+    );
+
     const medications = userRecord?.medications || [];
-
-    // Fetch only the 20 most recent heart rate logs
-    const heartRateLogs = await db.collection("MedicalRecords")
-      .aggregate([
-        { $match: { userEmail: email } },
-        { $unwind: "$heartRate" },
-        { $sort: { "heartRate.time": -1 } },
-        { $limit: 20 },
-        { $group: { _id: "$userEmail", heartRate: { $push: "$heartRate" } } }
-      ])
-      .toArray();
-    
-    // Fetch only the 20 most recent step count logs
-    const stepCountLogs = await db.collection("MedicalRecords")
-      .aggregate([
-        { $match: { userEmail: email } },
-        { $unwind: "$stepCount" },
-        { $sort: { "stepCount.time": -1 } },
-        { $limit: 20 },
-        { $group: { _id: "$userEmail", stepCount: { $push: "$stepCount" } } }
-      ])
-      .toArray();
-
-    // Fetch only the 20 most recent sleep tracking logs
-    const sleepTrackingLogs = await db.collection("MedicalRecords")
-      .aggregate([
-        { $match: { userEmail: email } },
-        { $unwind: "$sleepTracking" },
-        { $sort: { "sleepTracking.time": -1 } },
-        { $limit: 20 },
-        { $group: { _id: "$userEmail", sleepTracking: { $push: "$sleepTracking" } } }
-      ])
-      .toArray();
+    const heartRateLogs = userRecord?.heartRate ?? [];
+    const stepCountLogs = userRecord?.stepCount ?? [];
+    const sleepTrackingLogs = userRecord?.sleepTracking ?? [];
 
     const missedMeds = medications.filter(med => med.logs.some(log => log.status === "Missed")).length;
     const takenMeds = medications.filter(med => med.logs.some(log => log.status === "Taken")).length;
@@ -991,9 +973,9 @@ app.get("/get-health-dashboard", async (req, res) => {
       upcomingAppointments,
       medicationStats,
       healthAlerts,
-      heartRateLogs: heartRateLogs.length > 0 ? heartRateLogs[0].heartRate : [],
-      stepCountLogs: stepCountLogs.length > 0 ? stepCountLogs[0].stepCount : [],
-      sleepTrackingLogs: sleepTrackingLogs.length > 0 ? sleepTrackingLogs[0].sleepTracking : []
+      heartRateLogs,
+      stepCountLogs,
+      sleepTrackingLogs
     });
 
     res.json({
@@ -1001,9 +983,9 @@ app.get("/get-health-dashboard", async (req, res) => {
       upcomingAppointments,
       medicationStats,
       healthAlerts,
-      heartRateLogs: heartRateLogs.length > 0 ? heartRateLogs[0].heartRate : [],
-      stepCountLogs: stepCountLogs.length > 0 ? stepCountLogs[0].stepCount : [],
-      sleepTrackingLogs: sleepTrackingLogs.length > 0 ? sleepTrackingLogs[0].sleepTracking : []
+      heartRateLogs,
+      stepCountLogs,
+      sleepTrackingLogs
     });
 
   } catch (error) {
@@ -1011,6 +993,7 @@ app.get("/get-health-dashboard", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
+
 
 
 
