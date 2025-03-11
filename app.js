@@ -917,15 +917,15 @@ app.get("/get-health-dashboard", async (req, res) => {
       .limit(3)
       .toArray();
 
-    // Fetch latest medical records but limit logs to last 7 days
+    // Fetch latest medical records but limit logs
     const userRecord = await db.collection("MedicalRecords").findOne(
       { userEmail: email },
       {
         projection: {
-          heartRate: { $slice: -20 }, // Get the last 20 heart rate logs
-          stepCount: { $slice: -20 }, // Get the last 20 step count logs
-          sleepTracking: { $slice: -20 }, // Get the last 20 sleep tracking logs
-          medicalLogs: { $slice: -7 }, // Get the last 7 medical logs (7 days)
+          heartRate: { $slice: -20 }, // Last 20 heart rate logs
+          stepCount: { $slice: -20 }, // Last 20 step count logs
+          sleepTracking: { $slice: -20 }, // Last 20 sleep tracking logs
+          medicalLogs: { $slice: -7 }, // Last 7 days of medical logs
           medications: 1 // Keep medications data unchanged
         }
       }
@@ -937,9 +937,7 @@ app.get("/get-health-dashboard", async (req, res) => {
     const sleepTrackingLogs = userRecord?.sleepTracking ?? [];
     const medicalLogs = userRecord?.medicalLogs ?? []; // Last 7 days only
 
-    const missedMeds = medications.filter(med => med.logs.some(log => log.status === "Missed")).length;
-    const takenMeds = medications.filter(med => med.logs.some(log => log.status === "Taken")).length;
-
+    // Medication Statistics
     const medicationStats = {
       dates: [],
       taken: [],
@@ -967,10 +965,38 @@ app.get("/get-health-dashboard", async (req, res) => {
 
     const totalMissed = medicationStats.missed.reduce((sum, count) => sum + count, 0);
     const healthAlerts = [];
-    if (totalMissed > 0) {
-      healthAlerts.push(`You missed ${totalMissed} medication(s) this week!`);
+
+    // 1️⃣ Next Medication Dose Reminder
+    const nextDoseSoon = medications.some(med => {
+      const nextDoseTime = med.nextDose ? new Date(med.nextDose) : null;
+      if (!nextDoseTime) return false;
+      const diffMinutes = Math.floor((nextDoseTime - new Date()) / 60000);
+      return diffMinutes > 0 && diffMinutes <= 60; // Due within 1 hour
+    });
+    if (nextDoseSoon) {
+      healthAlerts.push("You have a medication dose due soon.");
     }
 
+    // 2️⃣ Overdue Medication Alert (Missed & Not Taken)
+    const overdueMedications = medications.filter(med => 
+      med.logs.some(log => log.status === "Missed" && !log.markedAsTaken)
+    ).length;
+    if (overdueMedications > 0) {
+      healthAlerts.push(`You have ${overdueMedications} overdue medication(s) that need attention.`);
+    }
+
+    // 3️⃣ Critical Medication Warning (3+ Missed Doses of Same Medication)
+    const criticalMissedMeds = medications.filter(med => 
+      med.logs.filter(log => log.status === "Missed").length >= 3
+    ).length;
+    if (criticalMissedMeds > 0) {
+      healthAlerts.push("Warning: You have missed 3+ doses of a critical medication. Please consult your doctor.");
+    }
+
+    // 4️⃣ Doctor Contact Suggestion (5+ Missed Medications in Total)
+    if (totalMissed >= 5) {
+      healthAlerts.push(`You have missed ${totalMissed} medications! Please contact your doctor immediately. <a href='/messages'>Message a doctor</a>`);
+    }
 
     console.log("Returning Health Dashboard Data:", {
       recentAppointments,
@@ -999,6 +1025,7 @@ app.get("/get-health-dashboard", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
+
 
 
 
