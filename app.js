@@ -477,9 +477,17 @@ app.post("/save-medical-records", async (req, res) => {
         healthLogs,
         labResults,
         doctorVisits,
-        heartRate: heartRate !== undefined ? [{ time: new Date().toISOString(), value: heartRate }] : [],
-        stepCount: stepCount !== undefined ? [{ time: new Date().toISOString(), value: stepCount }] : [],
-        sleepTracking: sleepTracking !== undefined ? [{ time: new Date().toISOString(), value: sleepTracking }] : [], // Store Sleep Tracking as an array
+        heartRate: heartRate !== undefined
+        ? [{ time: req.body.heartRateTime || new Date().toISOString(), value: heartRate }]
+        : [],
+      
+      stepCount: stepCount !== undefined
+        ? [{ time: req.body.stepCountTime || new Date().toISOString(), value: stepCount }]
+        : [],
+      
+      sleepTracking: sleepTracking !== undefined
+        ? [{ time: req.body.sleepTrackingTime || new Date().toISOString(), value: sleepTracking }]
+        : [],      
         bloodOxygen: bloodOxygen !== undefined ? [{ time: new Date().toISOString(), value: bloodOxygen }] : [], // Blood oxygen tracking initialized
         bloodOxygen,
         organDonorStatus,
