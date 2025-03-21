@@ -388,7 +388,7 @@ app.post("/save-medical-records", async (req, res) => {
     doctorVisits,
     heartRate,
     stepCount,
-    sleepTracking, // Add Sleep Tracking
+    sleepTracking,
     bloodOxygen,
     organDonorStatus,
     medicalDirectives,
@@ -402,105 +402,95 @@ app.post("/save-medical-records", async (req, res) => {
     const existingRecord = await db.collection("MedicalRecords").findOne({ userEmail: email });
 
     if (existingRecord) {
-      // Ensure arrays exist before appending new data
-      const heartRateLogs = Array.isArray(existingRecord.heartRate) ? existingRecord.heartRate : [];
-      const stepCountLogs = Array.isArray(existingRecord.stepCount) ? existingRecord.stepCount : [];
-      const sleepTrackingLogs = Array.isArray(existingRecord.sleepTracking) ? existingRecord.sleepTracking : []; // Ensure Sleep Tracking array exists
-      const bloodOxygenLogs = Array.isArray(existingRecord.bloodOxygen) ? existingRecord.bloodOxygen : [];
+      const updates = {};
 
-      // Append new Heart Rate log
+      // Basic field updates (only if provided)
+      if (fullName !== undefined) updates.fullName = fullName;
+      if (dateOfBirth !== undefined) updates.dateOfBirth = dateOfBirth;
+      if (gender !== undefined) updates.gender = gender;
+      if (bloodType !== undefined) updates.bloodType = bloodType;
+      if (emergencyContact !== undefined) updates.emergencyContact = emergencyContact;
+      if (medicalHistory !== undefined) updates.medicalHistory = medicalHistory;
+      if (medications !== undefined) updates.medications = medications;
+      if (vaccinations !== undefined) updates.vaccinations = vaccinations;
+      if (smokingStatus !== undefined) updates.smokingStatus = smokingStatus;
+      if (alcoholConsumption !== undefined) updates.alcoholConsumption = alcoholConsumption;
+      if (exerciseRoutine !== undefined) updates.exerciseRoutine = exerciseRoutine;
+      if (sleepPatterns !== undefined) updates.sleepPatterns = sleepPatterns;
+      if (healthLogs !== undefined) updates.healthLogs = healthLogs;
+      if (labResults !== undefined) updates.labResults = labResults;
+      if (doctorVisits !== undefined) updates.doctorVisits = doctorVisits;
+      if (organDonorStatus !== undefined) updates.organDonorStatus = organDonorStatus;
+      if (medicalDirectives !== undefined) updates.medicalDirectives = medicalDirectives;
+
+      // Logs with appending logic
       if (heartRate !== undefined) {
+        const heartRateLogs = Array.isArray(existingRecord.heartRate) ? existingRecord.heartRate : [];
         heartRateLogs.push({
           time: req.body.heartRateTime || new Date().toISOString(),
           value: heartRate,
         });
+        updates.heartRate = heartRateLogs;
       }
 
-      // Append new Step Count log
       if (stepCount !== undefined) {
+        const stepCountLogs = Array.isArray(existingRecord.stepCount) ? existingRecord.stepCount : [];
         stepCountLogs.push({
           time: req.body.stepCountTime || new Date().toISOString(),
           value: stepCount,
         });
+        updates.stepCount = stepCountLogs;
       }
 
-      // Append new Sleep Tracking log
       if (sleepTracking !== undefined) {
+        const sleepTrackingLogs = Array.isArray(existingRecord.sleepTracking) ? existingRecord.sleepTracking : [];
         sleepTrackingLogs.push({
           time: req.body.sleepTrackingTime || new Date().toISOString(),
           value: sleepTracking,
         });
+        updates.sleepTracking = sleepTrackingLogs;
       }
 
-      // Append new Blood Oxygen log
       if (bloodOxygen !== undefined) {
-        bloodOxygenLogs.push({ time: new Date().toISOString(), value: bloodOxygen });
+        const bloodOxygenLogs = Array.isArray(existingRecord.bloodOxygen) ? existingRecord.bloodOxygen : [];
+        bloodOxygenLogs.push({
+          time: new Date().toISOString(),
+          value: bloodOxygen,
+        });
+        updates.bloodOxygen = bloodOxygenLogs;
       }
 
       await db.collection("MedicalRecords").updateOne(
         { userEmail: email },
-        {
-          $set: {
-            fullName,
-            dateOfBirth,
-            gender,
-            bloodType,
-            emergencyContact,
-            medicalHistory,
-            medications,
-            vaccinations,
-            smokingStatus,
-            alcoholConsumption,
-            exerciseRoutine,
-            sleepPatterns,
-            healthLogs,
-            labResults,
-            doctorVisits,
-            heartRate: heartRateLogs,
-            stepCount: stepCountLogs,
-            sleepTracking: sleepTrackingLogs, // Append new Sleep Tracking logs
-            bloodOxygen: bloodOxygenLogs, // Append blood oxygen logs
-            organDonorStatus,
-            medicalDirectives,
-          },
-        }
+        { $set: updates }
       );
 
       return res.status(200).json({ message: "Medical records updated successfully" });
     } else {
-      // Create a new record with logs initialized as arrays
+      // New document
       await db.collection("MedicalRecords").insertOne({
         userEmail: email,
-        fullName,
-        dateOfBirth,
-        gender,
-        bloodType,
-        emergencyContact,
-        medicalHistory,
-        medications,
-        vaccinations,
-        smokingStatus,
-        alcoholConsumption,
-        exerciseRoutine,
-        sleepPatterns,
-        healthLogs,
-        labResults,
-        doctorVisits,
-        heartRate: heartRate !== undefined
-          ? [{ time: req.body.heartRateTime || new Date().toISOString(), value: heartRate }]
-          : [],
-
-        stepCount: stepCount !== undefined
-          ? [{ time: req.body.stepCountTime || new Date().toISOString(), value: stepCount }]
-          : [],
-
-        sleepTracking: sleepTracking !== undefined
-          ? [{ time: req.body.sleepTrackingTime || new Date().toISOString(), value: sleepTracking }]
-          : [],
-        bloodOxygen: bloodOxygen !== undefined ? [{ time: new Date().toISOString(), value: bloodOxygen }] : [], // Blood oxygen tracking initialized
-        bloodOxygen,
-        organDonorStatus,
-        medicalDirectives,
+        fullName: fullName || '',
+        dateOfBirth: dateOfBirth || '',
+        gender: gender || '',
+        bloodType: bloodType || '',
+        emergencyContact: emergencyContact || '',
+        medicalHistory: medicalHistory || '',
+        medications: medications || [],
+        vaccinations: vaccinations || '',
+        smokingStatus: smokingStatus || '',
+        alcoholConsumption: alcoholConsumption || '',
+        exerciseRoutine: exerciseRoutine || '',
+        sleepPatterns: sleepPatterns || '',
+        healthLogs: healthLogs || '',
+        labResults: labResults || '',
+        doctorVisits: doctorVisits || '',
+        heartRate: heartRate !== undefined ? [{ time: req.body.heartRateTime || new Date().toISOString(), value: heartRate }] : [],
+        stepCount: stepCount !== undefined ? [{ time: req.body.stepCountTime || new Date().toISOString(), value: stepCount }] : [],
+        sleepTracking: sleepTracking !== undefined ? [{ time: req.body.sleepTrackingTime || new Date().toISOString(), value: sleepTracking }] : [],
+        bloodOxygen: bloodOxygen !== undefined ? [{ time: new Date().toISOString(), value: bloodOxygen }] : [],
+        organDonorStatus: organDonorStatus || '',
+        medicalDirectives: medicalDirectives || '',
       });
 
       return res.status(201).json({ message: "Medical records saved successfully" });
@@ -510,6 +500,7 @@ app.post("/save-medical-records", async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 });
+
 
 
 
