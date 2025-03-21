@@ -264,7 +264,7 @@ app.post("/removeProfilePicture", async (req, res) => {
     }
 
     const result = await db.collection("Users").updateOne(
-      { email: email }, 
+      { email: email },
       { $set: { profilePicture: null } } // ✅ Fix: Set profilePicture to null instead of removing it
     );
 
@@ -410,17 +410,26 @@ app.post("/save-medical-records", async (req, res) => {
 
       // Append new Heart Rate log
       if (heartRate !== undefined) {
-        heartRateLogs.push({ time: new Date().toISOString(), value: heartRate });
+        heartRateLogs.push({
+          time: req.body.heartRateTime || new Date().toISOString(),
+          value: heartRate,
+        });
       }
 
       // Append new Step Count log
       if (stepCount !== undefined) {
-        stepCountLogs.push({ time: new Date().toISOString(), value: stepCount });
+        stepCountLogs.push({
+          time: req.body.stepCountTime || new Date().toISOString(),
+          value: stepCount,
+        });
       }
 
       // Append new Sleep Tracking log
       if (sleepTracking !== undefined) {
-        sleepTrackingLogs.push({ time: new Date().toISOString(), value: sleepTracking });
+        sleepTrackingLogs.push({
+          time: req.body.sleepTrackingTime || new Date().toISOString(),
+          value: sleepTracking,
+        });
       }
 
       // Append new Blood Oxygen log
@@ -478,16 +487,16 @@ app.post("/save-medical-records", async (req, res) => {
         labResults,
         doctorVisits,
         heartRate: heartRate !== undefined
-        ? [{ time: req.body.heartRateTime || new Date().toISOString(), value: heartRate }]
-        : [],
-      
-      stepCount: stepCount !== undefined
-        ? [{ time: req.body.stepCountTime || new Date().toISOString(), value: stepCount }]
-        : [],
-      
-      sleepTracking: sleepTracking !== undefined
-        ? [{ time: req.body.sleepTrackingTime || new Date().toISOString(), value: sleepTracking }]
-        : [],      
+          ? [{ time: req.body.heartRateTime || new Date().toISOString(), value: heartRate }]
+          : [],
+
+        stepCount: stepCount !== undefined
+          ? [{ time: req.body.stepCountTime || new Date().toISOString(), value: stepCount }]
+          : [],
+
+        sleepTracking: sleepTracking !== undefined
+          ? [{ time: req.body.sleepTrackingTime || new Date().toISOString(), value: sleepTracking }]
+          : [],
         bloodOxygen: bloodOxygen !== undefined ? [{ time: new Date().toISOString(), value: bloodOxygen }] : [], // Blood oxygen tracking initialized
         bloodOxygen,
         organDonorStatus,
